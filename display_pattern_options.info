@@ -1,0 +1,4 @@
+name = Display Pattern Options
+description = "Provides options for display patterns."
+core = 7.x
+dependencies[] = panelizer

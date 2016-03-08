@@ -1,0 +1,368 @@
+<?php
+/**
+ * Implements hook_menu().
+ *
+ * @return array
+ */
+function display_pattern_options_menu(){
+    return _display_pattern_options_add_ajax_endpoints();
+}
+
+/**
+ * Implements hook_form_FORM_ID_alter().
+ *
+ * @param $form
+ * @param $form_state
+ */
+function display_pattern_options_form_ctools_node_content_type_edit_form_alter(&$form, &$form_state){
+
+    _display_pattern_options_pane_form_alter($form, $form_state);
+}
+
+/**
+ * Implements hook_form_FORM_ID_alter().
+ *
+ * @param $form
+ * @param $form_state
+ */
+function display_pattern_options_form_views_ui_edit_display_form_alter(&$form, &$form_state){
+
+    _display_pattern_options_views_form_alter($form, $form_state);
+}
+
+/**
+ * Implements hook_panels_pane_content_alter().
+ *
+ * @param $content
+ * @param $pane
+ * @param $args
+ * @param $contexts
+ */
+function display_pattern_options_panels_pane_content_alter($content, $pane, $args, $contexts){
+    _display_pattern_options_expose_custom_pane_config($content, $pane);
+}
+
+/**
+ * Add display_pattern_options value (from panel pane setting) to node object so it available in preprocess
+ *
+ * @param $content
+ * @param $pane
+ */
+function _display_pattern_options_expose_custom_pane_config($content, $pane){
+    if (array_key_exists('display_options', $pane->configuration)) {
+        $content->content['#node']->display_pattern_options = $pane->configuration['display_pattern_options'];
+    }
+}
+
+/**
+ * Implements hook_entity_info_alter().
+ */
+function display_pattern_options_entity_info_alter(&$entity_info) {
+    _display_pattern_options_add_custom_view_modes($entity_info);
+}
+
+/**
+ * Add custom view modes (without using entity view mode module)
+ *
+ * NOTE: node view mode disabled by default
+ * use display_pattern_options.install to enable per bundle
+ *
+ * @param $entity_info
+ */
+function _display_pattern_options_add_custom_view_modes(&$entity_info){
+    $entities = _display_pattern_options_get_view_mode_config();
+
+    foreach ($entities as $entity_type => $bundles) {
+
+        foreach ($bundles as $bundle_type => $view_modes) {
+
+            foreach ($view_modes as $view_mode){
+                $entity_info[$entity_type]['view modes'][$view_mode] = array(
+                    'label' => t(ucfirst($view_mode)),
+                    'custom settings' => $entity_type == 'node' ? FALSE : TRUE,
+                );
+            }
+        }
+    }
+}
+
+/**
+ * Implements hook_entity_prepare_view().
+ *
+ *
+ * @param $entities
+ * @param $type
+ * @param $langcode
+ */
+function display_pattern_options_entity_prepare_view($entities, $type, $langcode){
+    _display_pattern_options_expose_custom_view_config($entities);
+}
+
+/**
+ * Add display_pattern_options value (from view setting) to node object so it available in preprocess
+ *
+ * @param $entities
+ */
+function _display_pattern_options_expose_custom_view_config($entities){
+    foreach ($entities as &$entity) {
+        if (property_exists($entity, 'view')) {
+
+            // NOTE: Assignment(=) not comparison(==)
+            if (!$entity->display_pattern_options = $entity->view->display[$entity->view->current_display]->display_options['row_options']['display_pattern_options']) {
+                $entity->display_pattern_options = $entity->view->display['default']->display_options['row_options']['display_pattern_options'];
+            }
+        }
+    }
+}
+
+/**
+ * Add custom ajax endpoints
+ *
+ * @return array
+ */
+function _display_pattern_options_add_ajax_endpoints(){
+    $items = array();
+    $items['display_pattern_options/options'] = array(
+        'page callback' => '_display_pattern_options_options_ajax_callback',
+        'access callback' => TRUE,
+    );
+
+    return $items;
+}
+
+/**
+ * Custom ajax callback
+ *
+ * return json encoded list of display_pattern_options
+ *
+ * @param $view_mode
+ */
+function _display_pattern_options_options_ajax_callback($view_mode){
+    print json_encode(_display_pattern_options_get_options_by_view_mode($view_mode));
+}
+
+
+/**
+ * Add display_pattern_options to view mode forms
+ *
+ * @param $form
+ * @param $form_state
+ */
+function _display_pattern_options_pane_form_alter(&$form, &$form_state){
+
+    $form['display_pattern_options'] = array(
+        '#title' => 'Display pattern options',
+        '#type' => 'select',
+        '#description' => 'Select display pattern options for this build mode',
+        '#options' => array(
+            'red' => 'Red',
+            'green' => 'Green',
+            'blue' => 'Blue'
+        ),
+        '#default_value' => $form_state['conf']['display_pattern_options'] ? $form_state['conf']['display_pattern_options'] : 'red',
+        '#states' => array(
+            'visible' => array(
+                ':input[name="build_mode"]'=> array('value'=>'promo')
+            ),
+        )
+    );
+
+    $form['#submit'][] = '_display_pattern_options_form_ctools_node_content_type_edit_form_submit';
+}
+
+
+/**
+ * Add display_pattern_options to view mode forms
+ *
+ * @param $form
+ * @param $form_state
+ */
+function _display_pattern_options_views_form_alter(&$form, &$form_state){
+
+    // NOTE: Assignment(=) not comparison(==)
+    if (!$default_display_pattern_options = $form_state['view']->display[$form_state['view']->current_display]->display_options['row_options']['display_pattern_options']) {
+        $default_display_pattern_options = $form_state['view']->display['default']->display_options['row_options']['display_pattern_options'];
+    }
+
+    $entity_type = $form_state['view']->base_table;
+    // NOTE: Assignment(=) not comparison(==)
+    $bundle_types = array();
+    if (!$bundle_type = $form_state['view']->display[$form_state['view']->current_display]->display_options['filters']['type']['value']) {
+        $bundle_types = $form_state['view']->display['default']->display_options['filters']['type']['value'];
+    }
+
+    $form['options']['row_options']['view_mode']['#attached']['js'] = array(
+        drupal_get_path('module', 'display_pattern_options') . '/js/display_pattern_options.js'
+    );
+
+    if (array_key_exists('row_options', $form_state['input'])) {
+        $current_view_mode = $form_state['input']['row_options']['view_mode'];
+    } else{
+        $current_view_mode = $form['options']['row_options']['view_mode']['#default_value'];
+    }
+
+    $options = _display_pattern_options_get_options_by_view_mode($current_view_mode);
+
+    $form['options']['row_options']['display_pattern_options'] = array(
+        '#title' => 'Display pattern options',
+        '#type' => 'select',
+        '#description' => 'Select display pattern options for this build mode',
+        '#options' => $options,
+        '#default_value' => $default_display_pattern_options ? $default_display_pattern_options: 'red',
+//        '#states' => array(
+//            'visible' => array(
+//                ':input[name="row_options[view_mode]"]' => _display_pattern_options_display_pattern_has_options($entity_type, $bundle_types),
+//            ),
+//        ),
+    );
+
+    $form['#submit'][] = '_display_pattern_options_form_ctools_node_content_type_edit_form_submit';
+}
+
+function _display_pattern_options_ajax($form, $form_state){
+   return $form['options']['row_options']['display_pattern_options'];
+}
+
+/**
+ * Custom submit function to store added config values
+ *
+ * @param $form
+ * @param $form_state
+ */
+function _display_pattern_options_form_ctools_node_content_type_edit_form_submit($form, &$form_state) {
+    $form_state['conf']['display_pattern_options'] = $form_state['values']['display_pattern_options'];
+}
+
+/**
+ * Helper function to determine if display pattern has options
+ *
+ * @return array
+ */
+//function _display_pattern_options_display_pattern_has_options($entity_type, array $bundle_types){
+//
+//    $config = _display_pattern_options_get_config();
+//
+//    $values = array();
+//    foreach ($bundle_types as $bundle_type){
+//        foreach ($config[$entity_type][$bundle_type] as $view_mode => $themes) {
+//            if (!empty($themes)) {
+//                // $view_mode key here ensures no duplicates
+//                $values[$view_mode] = array('value' => $view_mode);
+//            }
+//        }
+//    }
+//
+//    // array values removes associative array keys and replaces with numeric which is what states API seems to need
+//    return array_values($values);
+//}
+
+
+/**
+ * Defines custom view_modes by entity
+ *
+ * @return array
+ */
+function _display_pattern_options_get_view_mode_config(){
+    return array(
+        // entity type
+        'node' => array(
+            // bundle
+            'page' => array(
+                //  view mode / build mode / content pattern
+                'hero',
+                'promo'
+            ),
+            // bundle
+            'article'=> array(
+                //  view mode / build mode / content pattern
+                'promo'
+            )
+        ),
+
+        // entity type
+        'user' => array(
+            // bundle
+            'user'=> array(
+                //  view mode / build mode / content pattern
+                'promo'
+            )
+        ),
+
+        // entity type
+        'taxonomy_term' => array(
+            // bundle
+            'taxonomy_term'=> array(
+                //  view mode / build mode / content pattern
+                'promo'
+            )
+        )
+    );
+}
+
+/**
+ * Get available view_mode_options by view_mode
+ *
+ * @param $view_mode
+ * @return mixed
+ */
+function _display_pattern_options_get_options_by_view_mode($view_mode){
+    $config = _display_pattern_options_get_options_config();
+
+    return $config[$view_mode];
+}
+
+/**
+ * Defines view_mode_options available for each view_mode
+ *
+ * @return array
+ */
+function _display_pattern_options_get_options_config(){
+    return array(
+        // view mode
+        'hero' => array(
+            // theme
+            'red' => 'Red',
+            'green' => 'Green',
+            'blue' => 'Blue'
+        ),
+        // theme
+        'promo' => array(
+            // theme
+            'red' => 'Red',
+            'green' => 'Green'
+        )
+    );
+}
+
+/**
+ * Enable custom view modes for selected bundles
+ *
+ * NOTE:
+ * called in .install
+ * see display_pattern_options.module for _display_pattern_options_get_config()
+ */
+function _display_pattern_options_enable_view_modes_by_bundle(){
+
+    $entities = _display_pattern_options_get_view_mode_config();
+
+    foreach ($entities as $entity_type => $bundles) {
+        foreach ($bundles as $bundle_type => $view_modes) {
+            $settings = NULL;
+            $settings = field_bundle_settings($entity_type, $bundle_type);
+            foreach ($view_modes as $view_mode){
+                $settings['view_modes'][$view_mode]['custom_settings'] = TRUE;
+            }
+            field_bundle_settings($entity_type, $bundle_type, $settings);
+        }
+    }
+}
+
+
+// @TODO: might be useful??
+//function display_pattern_options_entity_view_mode_alter(&$view_mode, $context) {
+//    // For nodes, change the view mode when it is teaser.
+//    if ($context['entity_type'] == 'node' && $view_mode == 'teaser') {
+//        $view_mode = 'my_custom_view_mode';
+//    }
+//}
+

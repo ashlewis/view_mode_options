@@ -1,0 +1,19 @@
+<?php
+
+/**
+ * Implements hook_install().
+ */
+function display_pattern_options_install(){
+    _display_pattern_options_enable_view_modes_by_bundle();
+}
+
+/**
+ * Implements hook_update_N().
+ */
+/**
+ * Enable view modes by bundle
+ */
+function display_pattern_options_update_7001(){
+    _display_pattern_options_enable_view_modes_by_bundle();
+}
+
