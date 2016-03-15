@@ -150,26 +150,59 @@ function _display_pattern_options_options_ajax_callback($view_mode){
  */
 function _display_pattern_options_pane_form_alter(&$form, &$form_state){
 
-    $form['display_pattern_options'] = array(
+    _display_pattern_options_add_js($form['build_mode']);
+
+    $default_option = $form_state['conf']['display_pattern_options'];
+
+    if (array_key_exists('build_mode', $form_state['input'])) {
+        $view_mode = $form_state['input']['build_mode'];
+    } else{
+        $view_mode = $form['build_mode']['#default_value'];
+    }
+
+    $options =_display_pattern_options_build_select_element_options($view_mode);
+
+    _display_pattern_options_add_form_element($form, $options, $default_option);
+}
+
+/**
+ * Add display_pattern_options element to specified form or the parent element (within form) if specified
+ *
+ * @param $form
+ * @param $options
+ * @param $default
+ * @param bool $parent
+ */
+function _display_pattern_options_add_form_element(&$form, $options, $default, &$parent=false){
+
+    if (!$parent) {
+        $parent = &$form;
+    }
+
+    $parent['display_pattern_options'] = array(
         '#title' => 'Display pattern options',
         '#type' => 'select',
         '#description' => 'Select display pattern options for this build mode',
-        '#options' => array(
-            'red' => 'Red',
-            'green' => 'Green',
-            'blue' => 'Blue'
-        ),
-        '#default_value' => $form_state['conf']['display_pattern_options'] ? $form_state['conf']['display_pattern_options'] : 'red',
-        '#states' => array(
-            'visible' => array(
-                ':input[name="build_mode"]'=> array('value'=>'promo')
-            ),
-        )
+        '#options' => $options,
+        '#default_value' => $default ? $default : 'default',
     );
 
     $form['#submit'][] = '_display_pattern_options_form_ctools_node_content_type_edit_form_submit';
 }
 
+/**
+ * Add custom js
+ *
+ * required to populate options select list based on current view mode
+ * NOTE: form API #ajax callback functionality would not work at all
+ *
+ * @param $form_element
+ */
+function _display_pattern_options_add_js(&$form_element){
+    $form_element['#attached']['js'] = array(
+        drupal_get_path('module', 'display_pattern_options') . '/js/display_pattern_options.js'
+    );
+}
 
 /**
  * Add display_pattern_options to view mode forms
@@ -179,48 +212,47 @@ function _display_pattern_options_pane_form_alter(&$form, &$form_state){
  */
 function _display_pattern_options_views_form_alter(&$form, &$form_state){
 
-    // NOTE: Assignment(=) not comparison(==)
-    if (!$default_display_pattern_options = $form_state['view']->display[$form_state['view']->current_display]->display_options['row_options']['display_pattern_options']) {
-        $default_display_pattern_options = $form_state['view']->display['default']->display_options['row_options']['display_pattern_options'];
+    if ($form_state['section'] != 'row_options') {
+        return;
     }
 
-    $entity_type = $form_state['view']->base_table;
-    // NOTE: Assignment(=) not comparison(==)
-    $bundle_types = array();
-    if (!$bundle_type = $form_state['view']->display[$form_state['view']->current_display]->display_options['filters']['type']['value']) {
-        $bundle_types = $form_state['view']->display['default']->display_options['filters']['type']['value'];
-    }
+    _display_pattern_options_add_js($form['options']['row_options']['view_mode']);
 
-    $form['options']['row_options']['view_mode']['#attached']['js'] = array(
-        drupal_get_path('module', 'display_pattern_options') . '/js/display_pattern_options.js'
-    );
+    // NOTE: Assignment(=) not comparison(==)
+    // current view display
+    if (!$default_option = $form_state['view']->display[$form_state['view']->current_display]->display_options['row_options']['display_pattern_options']) {
+        // fallback to default view display
+        $default_option = $form_state['view']->display['default']->display_options['row_options']['display_pattern_options'];
+    }
 
     if (array_key_exists('row_options', $form_state['input'])) {
-        $current_view_mode = $form_state['input']['row_options']['view_mode'];
+        $view_mode = $form_state['input']['row_options']['view_mode'];
     } else{
-        $current_view_mode = $form['options']['row_options']['view_mode']['#default_value'];
+        $view_mode = $form['options']['row_options']['view_mode']['#default_value'];
     }
 
-    $options = _display_pattern_options_get_options_by_view_mode($current_view_mode);
+    $options =_display_pattern_options_build_select_element_options($view_mode);
 
-    $form['options']['row_options']['display_pattern_options'] = array(
-        '#title' => 'Display pattern options',
-        '#type' => 'select',
-        '#description' => 'Select display pattern options for this build mode',
-        '#options' => $options,
-        '#default_value' => $default_display_pattern_options ? $default_display_pattern_options: 'red',
-//        '#states' => array(
-//            'visible' => array(
-//                ':input[name="row_options[view_mode]"]' => _display_pattern_options_display_pattern_has_options($entity_type, $bundle_types),
-//            ),
-//        ),
-    );
+    _display_pattern_options_add_form_element($form, $options, $default_option, $form['options']['row_options']);
 
-    $form['#submit'][] = '_display_pattern_options_form_ctools_node_content_type_edit_form_submit';
 }
 
-function _display_pattern_options_ajax($form, $form_state){
-   return $form['options']['row_options']['display_pattern_options'];
+/**
+ * Build select list options for 'display pattern options' based on view mode
+ *
+ * @param $view_mode
+ * @return array
+ */
+function _display_pattern_options_build_select_element_options($view_mode){
+
+    $options = array('default'=>'- '. t('Default') .' -');
+
+    $view_mode_options = _display_pattern_options_get_options_by_view_mode($view_mode);
+    if (is_array($view_mode_options)) {
+        $options += $view_mode_options;
+    }
+
+    return $options;
 }
 
 /**
