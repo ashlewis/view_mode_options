@@ -14,23 +14,27 @@
                             '/display_pattern_options/options/'+ view_mode,
 
                             function(data){
-                                var options = '<option value="default">- Default -</option>';
 
                                 if (data) {
 
-                                    $.each(data, function( key, value ) {
-                                        options += '<option value="'+ key +'">'+ value +'</option>';
+                                    $.each(data, function(label, variations) {
+
+                                        var options = '<option value="default">- Default -</option>';
+
+                                        $.each(variations, function(key, value) {
+                                            options += '<option value="'+ key +'">'+ value +'</option>';
+                                        });
+
+                                        $('#edit-row-options-'+ label +', #edit-display-pattern-options').html(options);
                                     });
-
                                 }
-
-                                $('#edit-row-options-display-pattern-options, #edit-display-pattern-options').html(options);
                             },
 
                             'json'
                         );
 
                     });
+
                 };
 
             init();

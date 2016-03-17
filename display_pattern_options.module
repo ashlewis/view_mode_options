@@ -127,6 +127,11 @@ function _display_pattern_options_add_ajax_endpoints(){
         'access callback' => TRUE,
     );
 
+    $items['display_pattern_options_ajax_menu_item'] = array(
+        'page callback' => '_display_pattern_options_ajax_callback',
+        'access callback' => TRUE,
+    );
+
     return $items;
 }
 
@@ -160,9 +165,18 @@ function _display_pattern_options_pane_form_alter(&$form, &$form_state){
         $view_mode = $form['build_mode']['#default_value'];
     }
 
-    $options =_display_pattern_options_build_select_element_options($view_mode);
+//    $options =_display_pattern_options_build_select_element_options($view_mode);
+//
+//    _display_pattern_options_add_form_element($form, $options, $default_option);
 
-    _display_pattern_options_add_form_element($form, $options, $default_option);
+
+
+
+    $view_mode_options = _display_pattern_options_get_options_by_view_mode($view_mode);
+
+    foreach ($view_mode_options as $label => $options) {
+        _display_pattern_options_add_form_element($form, $label, $options, $default_option);
+    }
 }
 
 /**
@@ -173,21 +187,55 @@ function _display_pattern_options_pane_form_alter(&$form, &$form_state){
  * @param $default
  * @param bool $parent
  */
-function _display_pattern_options_add_form_element(&$form, $options, $default, &$parent=false){
+function _display_pattern_options_add_form_element(&$form, $label, $options, $default, &$parent=false){
 
     if (!$parent) {
         $parent = &$form;
     }
 
-    $parent['display_pattern_options'] = array(
-        '#title' => 'Display pattern options',
-        '#type' => 'select',
-        '#description' => 'Select display pattern options for this build mode',
-        '#options' => $options,
-        '#default_value' => $default ? $default : 'default',
-    );
+    $parent[$label] = _display_pattern_options_build_form_element($label, $options, $default);
 
     $form['#submit'][] = '_display_pattern_options_form_ctools_node_content_type_edit_form_submit';
+}
+
+/**
+ *
+ *
+ * @param $label
+ * @param $options
+ * @param $default
+ * @param bool $id
+ * @return array
+ */
+function _display_pattern_options_build_form_element($label, $options, $default=false, $id=false){
+
+    $view_modes = _display_pattern_options_get_view_modes_by_option($label);
+
+    $values = array();
+    foreach ($view_modes as $view_mode) {
+        $values[] = array('value' => $view_mode);
+    }
+
+    $visible = array('#edit-row-options-view-mode' => $values);
+
+    $element = array(
+        '#title' => $label,
+        '#type' => 'select',
+        '#description' => 'Select display pattern options for this build mode',
+        '#options' => array('default' => '- Default -') + $options,
+        '#default_value' => $default ? $default : 'default',
+        '#prefix' => '<div id="js-replace-'. $label .'">',
+        '#suffix' => '</div>',
+        '#states' => array(
+            'visible' => $visible
+        )
+    );
+
+    if ($id) {
+        $element['#id'] = $id;
+    }
+
+    return $element;
 }
 
 /**
@@ -216,7 +264,17 @@ function _display_pattern_options_views_form_alter(&$form, &$form_state){
         return;
     }
 
-    _display_pattern_options_add_js($form['options']['row_options']['view_mode']);
+    // temp disable while testing
+    //_display_pattern_options_add_js($form['options']['row_options']['view_mode']);
+
+    $form['options']['row_options']['view_mode']['#ajax'] = array(
+        //'callback' => '_ajax_callback',
+        // callback wont work here
+        // so we provide custom path
+        // which provides callback
+        'path' => 'display_pattern_options_ajax_menu_item',
+    );
+    // end testing
 
     // NOTE: Assignment(=) not comparison(==)
     // current view display
@@ -231,10 +289,27 @@ function _display_pattern_options_views_form_alter(&$form, &$form_state){
         $view_mode = $form['options']['row_options']['view_mode']['#default_value'];
     }
 
-    $options =_display_pattern_options_build_select_element_options($view_mode);
+    $view_mode_options = _display_pattern_options_get_options_by_view_mode($view_mode);
 
-    _display_pattern_options_add_form_element($form, $options, $default_option, $form['options']['row_options']);
+    foreach ($view_mode_options as $label => $options) {
+        _display_pattern_options_add_form_element($form, $label, $options, $default_option, $form['options']['row_options']);
+    }
 
+}
+
+function _display_pattern_options_ajax_callback(){
+
+    $commands = array();
+
+    $view_mode_options = _display_pattern_options_get_options_by_view_mode($_POST['row_options']['view_mode']);
+
+    foreach ($view_mode_options as $label => $options) {
+
+        $element = _display_pattern_options_build_form_element($label, $options);
+        $commands[] = ajax_command_replace('#js-replace-'. $label, drupal_render($element));
+    }
+
+    print ajax_render($commands);
 }
 
 /**
@@ -243,17 +318,17 @@ function _display_pattern_options_views_form_alter(&$form, &$form_state){
  * @param $view_mode
  * @return array
  */
-function _display_pattern_options_build_select_element_options($view_mode){
-
-    $options = array('default'=>'- '. t('Default') .' -');
-
-    $view_mode_options = _display_pattern_options_get_options_by_view_mode($view_mode);
-    if (is_array($view_mode_options)) {
-        $options += $view_mode_options;
-    }
-
-    return $options;
-}
+//function _display_pattern_options_build_select_element_options($options_array){
+//
+//    $options = array('default'=>'- '. t('Default') .' -');
+//
+//   // $view_mode_options = _display_pattern_options_get_options_by_view_mode($view_mode);
+//    if (is_array($options_array)) {
+//        $options += $options_array;
+//    }
+//
+//    return $options;
+//}
 
 /**
  * Custom submit function to store added config values
@@ -352,18 +427,47 @@ function _display_pattern_options_get_options_config(){
     return array(
         // view mode
         'hero' => array(
-            // theme
-            'red' => 'Red',
-            'green' => 'Green',
-            'blue' => 'Blue'
+            // modifiers
+            'colour' => array(
+                'red' => 'Red',
+                'green' => 'Green',
+                'blue' => 'Blue'
+            ),
+            'align' => array(
+                'left' => 'Left',
+                'right' => 'Right',
+            )
         ),
         // theme
         'promo' => array(
-            // theme
-            'red' => 'Red',
-            'green' => 'Green'
+            // modifiers
+            'colour' => array(
+                'red' => 'Red',
+                'green' => 'Green'
+            )
         )
     );
+}
+
+/**
+ * Return array of view modes which have specified $label as an applicable option
+ *
+ * @param $label
+ */
+function _display_pattern_options_get_view_modes_by_option($label){
+    $view_modes = array();
+
+    $options = _display_pattern_options_get_options_config();
+    foreach ($options as $view_mode => $modifiers) {
+
+        foreach ($modifiers as $modifier => $variation) {
+            if ($modifier == $label) {
+                $view_modes[] = $view_mode;
+            }
+        }
+    }
+
+    return $view_modes;
 }
 
 /**
