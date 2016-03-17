@@ -233,6 +233,7 @@ function _display_pattern_options_build_form_element($label, $options, $default=
 
     if ($id) {
         $element['#id'] = $id;
+        $element['#name'] = 'row_options['. $label . ']';
     }
 
     return $element;
@@ -276,12 +277,8 @@ function _display_pattern_options_views_form_alter(&$form, &$form_state){
     );
     // end testing
 
-    // NOTE: Assignment(=) not comparison(==)
-    // current view display
-    if (!$default_option = $form_state['view']->display[$form_state['view']->current_display]->display_options['row_options']['display_pattern_options']) {
-        // fallback to default view display
-        $default_option = $form_state['view']->display['default']->display_options['row_options']['display_pattern_options'];
-    }
+    
+    
 
     if (array_key_exists('row_options', $form_state['input'])) {
         $view_mode = $form_state['input']['row_options']['view_mode'];
@@ -292,6 +289,14 @@ function _display_pattern_options_views_form_alter(&$form, &$form_state){
     $view_mode_options = _display_pattern_options_get_options_by_view_mode($view_mode);
 
     foreach ($view_mode_options as $label => $options) {
+
+        // NOTE: Assignment(=) not comparison(==)
+        // current view display
+        if (!$default_option = $form_state['view']->display[$form_state['view']->current_display]->display_options['row_options'][$label]) {
+           // fallback to default view display
+            $default_option = $form_state['view']->display['default']->display_options['row_options'][$label];
+        }
+
         _display_pattern_options_add_form_element($form, $label, $options, $default_option, $form['options']['row_options']);
     }
 
@@ -305,7 +310,11 @@ function _display_pattern_options_ajax_callback(){
 
     foreach ($view_mode_options as $label => $options) {
 
-        $element = _display_pattern_options_build_form_element($label, $options);
+        // @TODO: this method will only replace form elements that were present
+        // when the form first loading, it is not going to be able to add new select element for further available options
+        // we need to look for a better way to add these elements using append
+
+        $element = _display_pattern_options_build_form_element($label, $options, false, 'edit-row-options-'. $label);
         $commands[] = ajax_command_replace('#js-replace-'. $label, drupal_render($element));
     }
 
