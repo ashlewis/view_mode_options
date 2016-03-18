@@ -101,15 +101,29 @@ function display_pattern_options_entity_prepare_view($entities, $type, $langcode
 /**
  * Add display_pattern_options value (from view setting) to node object so it available in preprocess
  *
+ * see display_pattern_options_preprocess_node() where these are added to html as classes
+ *
  * @param $entities
  */
 function _display_pattern_options_expose_custom_view_config($entities){
     foreach ($entities as &$entity) {
         if (property_exists($entity, 'view')) {
 
-            // NOTE: Assignment(=) not comparison(==)
-            if (!$entity->display_pattern_options = $entity->view->display[$entity->view->current_display]->display_options['row_options']['display_pattern_options']) {
-                $entity->display_pattern_options = $entity->view->display['default']->display_options['row_options']['display_pattern_options'];
+            $entity->display_pattern_options = array();
+
+            // @TODO:
+            // filter display_pattern_option values only i.e. we want only color, align and NOT relationship, comments, links, etc.
+            // we will prob need to prefix all options in form elements itself
+            // and then filter here
+
+            // get default view display settings
+            foreach($entity->view->display['default']->display_options['row_options'] as $label => $option) {
+                $entity->display_pattern_options[$label] = $option;
+            }
+
+            // overwrite with current view display settings - if available (there is prob a better way of doing this)
+            foreach($entity->view->display[$entity->view->current_display]->display_options['row_options'] as $label => $option) {
+                $entity->display_pattern_options[$label] = $option;
             }
         }
     }
@@ -122,16 +136,17 @@ function _display_pattern_options_expose_custom_view_config($entities){
  */
 function _display_pattern_options_add_ajax_endpoints(){
     $items = array();
-    $items['display_pattern_options/options'] = array(
-        'page callback' => '_display_pattern_options_options_ajax_callback',
-        'access callback' => TRUE,
-    );
+//    $items['display_pattern_options/options'] = array(
+//        'page callback' => '_display_pattern_options_options_ajax_callback',
+//        'access callback' => TRUE,
+//    );
 
     $items['display_pattern_options_ajax_menu_item'] = array(
         'page callback' => '_display_pattern_options_ajax_callback',
+        // Ensure correct format for rendered content
         'delivery callback' => 'ajax_deliver',
         'access callback' => TRUE,
-         // Ensure correct theme is used for custom ajax path
+        // Ensure correct theme is used for custom ajax path
         'theme callback' => 'ajax_base_page_theme',
         'type' => MENU_CALLBACK
     );
@@ -146,9 +161,9 @@ function _display_pattern_options_add_ajax_endpoints(){
  *
  * @param $view_mode
  */
-function _display_pattern_options_options_ajax_callback($view_mode){
-    print json_encode(_display_pattern_options_get_options_by_view_mode($view_mode));
-}
+//function _display_pattern_options_options_ajax_callback($view_mode){
+//    print json_encode(_display_pattern_options_get_options_by_view_mode($view_mode));
+//}
 
 
 /**
@@ -159,7 +174,7 @@ function _display_pattern_options_options_ajax_callback($view_mode){
  */
 function _display_pattern_options_pane_form_alter(&$form, &$form_state){
 
-    _display_pattern_options_add_js($form['build_mode']);
+   // _display_pattern_options_add_js($form['build_mode']);
 
     $default_option = $form_state['conf']['display_pattern_options'];
 
@@ -168,13 +183,6 @@ function _display_pattern_options_pane_form_alter(&$form, &$form_state){
     } else{
         $view_mode = $form['build_mode']['#default_value'];
     }
-
-//    $options =_display_pattern_options_build_select_element_options($view_mode);
-//
-//    _display_pattern_options_add_form_element($form, $options, $default_option);
-
-
-
 
     $view_mode_options = _display_pattern_options_get_options_by_view_mode($view_mode);
 
@@ -187,6 +195,7 @@ function _display_pattern_options_pane_form_alter(&$form, &$form_state){
  * Add display_pattern_options element to specified form or the parent element (within form) if specified
  *
  * @param $form
+ * @param $label
  * @param $options
  * @param $default
  * @param bool $parent
@@ -203,7 +212,7 @@ function _display_pattern_options_add_form_element(&$form, $label, $options, $de
 }
 
 /**
- *
+ * Build a display pattern option form element
  *
  * @param $label
  * @param $options
@@ -213,34 +222,19 @@ function _display_pattern_options_add_form_element(&$form, $label, $options, $de
  */
 function _display_pattern_options_build_form_element($label, $options, $default=false, $id=false){
 
-    $view_modes = _display_pattern_options_get_view_modes_by_option($label);
-
-    $values = array();
-    foreach ($view_modes as $view_mode) {
-        $values[] = array('value' => $view_mode);
-    }
-
-    $visible = array('#edit-row-options-view-mode' => $values);
-
     $element = array(
         '#title' => $label,
         '#type' => 'select',
         '#description' => 'Select display pattern options for this build mode',
         '#options' => array('default' => '- Default -') + $options,
         '#default_value' => $default ? $default : 'default',
-        '#prefix' => '<div id="js-replace-'. $label .'">',
-        '#suffix' => '</div>',
-        '#states' => array(
-            'visible' => $visible
-        ),
-        '#theme' => 'select'
     );
 
     if ($id) {
+        // this adds id (that is normally auto added)
+        // when we manually build element for ajax replace
         $element['#id'] = $id;
         $element['#name'] = 'row_options['. $label . ']';
-
-
     }
 
     return $element;
@@ -254,11 +248,11 @@ function _display_pattern_options_build_form_element($label, $options, $default=
  *
  * @param $form_element
  */
-function _display_pattern_options_add_js(&$form_element){
-    $form_element['#attached']['js'] = array(
-        drupal_get_path('module', 'display_pattern_options') . '/js/display_pattern_options.js'
-    );
-}
+//function _display_pattern_options_add_js(&$form_element){
+//    $form_element['#attached']['js'] = array(
+//        drupal_get_path('module', 'display_pattern_options') . '/js/display_pattern_options.js'
+//    );
+//}
 
 /**
  * Add display_pattern_options to view mode forms
@@ -272,20 +266,12 @@ function _display_pattern_options_views_form_alter(&$form, &$form_state){
         return;
     }
 
-    // temp disable while testing
-    //_display_pattern_options_add_js($form['options']['row_options']['view_mode']);
-
     $form['options']['row_options']['view_mode']['#ajax'] = array(
-        //'callback' => '_ajax_callback',
-        // callback wont work here
+        // callback wont work here (ctools)
         // so we provide custom path
         // which provides callback
         'path' => 'display_pattern_options_ajax_menu_item',
     );
-    // end testing
-
-    
-    
 
     if (array_key_exists('row_options', $form_state['input'])) {
         $view_mode = $form_state['input']['row_options']['view_mode'];
@@ -295,6 +281,8 @@ function _display_pattern_options_views_form_alter(&$form, &$form_state){
 
     $view_mode_options = _display_pattern_options_get_options_by_view_mode($view_mode);
 
+    $i = 0;
+    $len = count($view_mode_options);
     foreach ($view_mode_options as $label => $options) {
 
         // NOTE: Assignment(=) not comparison(==)
@@ -305,46 +293,55 @@ function _display_pattern_options_views_form_alter(&$form, &$form_state){
         }
 
         _display_pattern_options_add_form_element($form, $label, $options, $default_option, $form['options']['row_options']);
-    }
 
+        // add html wrapper around ALL option elements to be replaced in ajax callback
+        // NOTE: cannot add to render array as this will affect id and name attributes and values will not get saved as part of row options
+        if ($i == 0) {
+            $form['options']['row_options'][$label]['#prefix'] = '<div class="js-replace-container">';
+        }
+
+        if ($i == $len-1) {
+            $form['options']['row_options'][$label]['#suffix'] = '</div>';
+        }
+
+        $i++;
+    }
 }
 
+/**
+ * Custom ajax callback
+ *
+ * replace all display_pattern_option select elements with those applicable to selected view_mode
+ * when view_mode element is changed
+ *
+ * @return array
+ */
 function _display_pattern_options_ajax_callback(){
 
     $commands = array();
 
     $view_mode_options = _display_pattern_options_get_options_by_view_mode($_POST['row_options']['view_mode']);
 
+    $elements = array(
+        '#type' => 'container',
+        '#attributes' => array('class'=>array('js-replace-container')),
+        'content' => array()
+    );
+
+    // replace ALL option select elements
+    // this avoids the problem where we may be trying to replace elements that dont exist
+    // because the first view mode that loaded did not have the options that the subsequently selected view mode has
     foreach ($view_mode_options as $label => $options) {
-
-        // @TODO: this method will only replace form elements that were present
-        // when the form first loading, it is not going to be able to add new select element for further available options
-        // we need to look for a better way to add these elements using append
-
-        $element = _display_pattern_options_build_form_element($label, $options, false, 'edit-row-options-'. $label);
-        $commands[] = ajax_command_replace('#js-replace-'. $label, drupal_render($element));
+        $elements['content'][] = _display_pattern_options_build_form_element($label, $options, false, 'edit-row-options-'. $label);
     }
 
-    return ajax_render($commands);
-}
+    $commands[] = ajax_command_replace('.js-replace-container', drupal_render($elements));
 
-/**
- * Build select list options for 'display pattern options' based on view mode
- *
- * @param $view_mode
- * @return array
- */
-//function _display_pattern_options_build_select_element_options($options_array){
-//
-//    $options = array('default'=>'- '. t('Default') .' -');
-//
-//   // $view_mode_options = _display_pattern_options_get_options_by_view_mode($view_mode);
-//    if (is_array($options_array)) {
-//        $options += $options_array;
-//    }
-//
-//    return $options;
-//}
+    return array(
+        '#type' => 'ajax',
+        '#commands' => $commands
+    );
+}
 
 /**
  * Custom submit function to store added config values
@@ -470,21 +467,21 @@ function _display_pattern_options_get_options_config(){
  *
  * @param $label
  */
-function _display_pattern_options_get_view_modes_by_option($label){
-    $view_modes = array();
-
-    $options = _display_pattern_options_get_options_config();
-    foreach ($options as $view_mode => $modifiers) {
-
-        foreach ($modifiers as $modifier => $variation) {
-            if ($modifier == $label) {
-                $view_modes[] = $view_mode;
-            }
-        }
-    }
-
-    return $view_modes;
-}
+//function _display_pattern_options_get_view_modes_by_option($label){
+//    $view_modes = array();
+//
+//    $options = _display_pattern_options_get_options_config();
+//    foreach ($options as $view_mode => $modifiers) {
+//
+//        foreach ($modifiers as $modifier => $variation) {
+//            if ($modifier == $label) {
+//                $view_modes[] = $view_mode;
+//            }
+//        }
+//    }
+//
+//    return $view_modes;
+//}
 
 /**
  * Enable custom view modes for selected bundles
@@ -518,3 +515,20 @@ function _display_pattern_options_enable_view_modes_by_bundle(){
 //    }
 //}
 
+/**
+ * Implements hook_preprocess_node().
+ *
+ * @param $variables
+ */
+function display_pattern_options_preprocess_node(&$variables) {
+    // Add view-mode class to nodes
+    $variables['classes_array'][] = drupal_html_class('content-pattern--' . $variables['type']);
+    $variables['classes_array'][] = drupal_html_class('display-pattern--' . $variables['view_mode']);
+
+    if (array_key_exists('display_pattern_options', $variables)) {
+
+        foreach ($variables['display_pattern_options'] as $key => $value) {
+            $variables['classes_array'][] = drupal_html_class('display-pattern-options-'. $key .'--'. $value);
+        }
+    }
+}
