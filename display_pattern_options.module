@@ -306,6 +306,13 @@ function _display_pattern_options_views_form_alter(&$form, &$form_state){
 
         $i++;
     }
+    //@todo: make this betterer
+    if ($i == 0) {
+        $form['options']['row_options']['placeholder'] = array(
+            '#type' => 'markup',
+            '#markup' => '<div class="js-replace-container"></div>'
+        );
+    }
 }
 
 /**
