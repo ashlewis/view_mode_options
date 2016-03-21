@@ -1,4 +1,6 @@
 <?php
+
+define('DPO_FORM_ELEMENT_PREFIX', 'dpo--');
 /**
  * Implements hook_menu().
  *
@@ -70,6 +72,7 @@ function display_pattern_options_entity_info_alter(&$entity_info) {
  * @param $entity_info
  */
 function _display_pattern_options_add_custom_view_modes(&$entity_info){
+
     $entities = _display_pattern_options_get_view_mode_config();
 
     foreach ($entities as $entity_type => $bundles) {
@@ -106,24 +109,28 @@ function display_pattern_options_entity_prepare_view($entities, $type, $langcode
  * @param $entities
  */
 function _display_pattern_options_expose_custom_view_config($entities){
+
     foreach ($entities as &$entity) {
+
         if (property_exists($entity, 'view')) {
 
             $entity->display_pattern_options = array();
 
-            // @TODO:
-            // filter display_pattern_option values only i.e. we want only color, align and NOT relationship, comments, links, etc.
-            // we will prob need to prefix all options in form elements itself
-            // and then filter here
-
             // get default view display settings
             foreach($entity->view->display['default']->display_options['row_options'] as $label => $option) {
-                $entity->display_pattern_options[$label] = $option;
+
+                if (strpos($label, DPO_FORM_ELEMENT_PREFIX) !== false) {
+                    $entity->display_pattern_options[$label] = $option;
+                }
+
             }
 
             // overwrite with current view display settings - if available (there is prob a better way of doing this)
             foreach($entity->view->display[$entity->view->current_display]->display_options['row_options'] as $label => $option) {
-                $entity->display_pattern_options[$label] = $option;
+                if (strpos($label, DPO_FORM_ELEMENT_PREFIX) !== false) {
+                    $entity->display_pattern_options[$label] = $option;
+                }
+
             }
         }
     }
@@ -135,11 +142,8 @@ function _display_pattern_options_expose_custom_view_config($entities){
  * @return array
  */
 function _display_pattern_options_add_ajax_endpoints(){
+
     $items = array();
-//    $items['display_pattern_options/options'] = array(
-//        'page callback' => '_display_pattern_options_options_ajax_callback',
-//        'access callback' => TRUE,
-//    );
 
     $items['display_pattern_options_ajax_menu_item'] = array(
         'page callback' => '_display_pattern_options_ajax_callback',
@@ -155,26 +159,12 @@ function _display_pattern_options_add_ajax_endpoints(){
 }
 
 /**
- * Custom ajax callback
- *
- * return json encoded list of display_pattern_options
- *
- * @param $view_mode
- */
-//function _display_pattern_options_options_ajax_callback($view_mode){
-//    print json_encode(_display_pattern_options_get_options_by_view_mode($view_mode));
-//}
-
-
-/**
  * Add display_pattern_options to view mode forms
  *
  * @param $form
  * @param $form_state
  */
 function _display_pattern_options_pane_form_alter(&$form, &$form_state){
-
-   // _display_pattern_options_add_js($form['build_mode']);
 
     $default_option = $form_state['conf']['display_pattern_options'];
 
@@ -206,7 +196,7 @@ function _display_pattern_options_add_form_element(&$form, $label, $options, $de
         $parent = &$form;
     }
 
-    $parent[$label] = _display_pattern_options_build_form_element($label, $options, $default);
+    $parent[DPO_FORM_ELEMENT_PREFIX. $label] = _display_pattern_options_build_form_element($label, $options, $default);
 
     $form['#submit'][] = '_display_pattern_options_form_ctools_node_content_type_edit_form_submit';
 }
@@ -234,25 +224,11 @@ function _display_pattern_options_build_form_element($label, $options, $default=
         // this adds id (that is normally auto added)
         // when we manually build element for ajax replace
         $element['#id'] = $id;
-        $element['#name'] = 'row_options['. $label . ']';
+        $element['#name'] = 'row_options['. DPO_FORM_ELEMENT_PREFIX . $label . ']';
     }
 
     return $element;
 }
-
-/**
- * Add custom js
- *
- * required to populate options select list based on current view mode
- * NOTE: form API #ajax callback functionality would not work at all
- *
- * @param $form_element
- */
-//function _display_pattern_options_add_js(&$form_element){
-//    $form_element['#attached']['js'] = array(
-//        drupal_get_path('module', 'display_pattern_options') . '/js/display_pattern_options.js'
-//    );
-//}
 
 /**
  * Add display_pattern_options to view mode forms
@@ -281,15 +257,21 @@ function _display_pattern_options_views_form_alter(&$form, &$form_state){
 
     $view_mode_options = _display_pattern_options_get_options_by_view_mode($view_mode);
 
+//    $form['options']['row_options']['dpo'] = array(
+//        '#type' => 'container',
+//        '#attributes' => array('class'=>array('js-replace-container')),
+//        //'content' => array()
+//    );
+
     $i = 0;
     $len = count($view_mode_options);
     foreach ($view_mode_options as $label => $options) {
 
         // NOTE: Assignment(=) not comparison(==)
         // current view display
-        if (!$default_option = $form_state['view']->display[$form_state['view']->current_display]->display_options['row_options'][$label]) {
+        if (!$default_option = $form_state['view']->display[$form_state['view']->current_display]->display_options['row_options'][DPO_FORM_ELEMENT_PREFIX. $label]) {
            // fallback to default view display
-            $default_option = $form_state['view']->display['default']->display_options['row_options'][$label];
+            $default_option = $form_state['view']->display['default']->display_options['row_options'][DPO_FORM_ELEMENT_PREFIX. $label];
         }
 
         _display_pattern_options_add_form_element($form, $label, $options, $default_option, $form['options']['row_options']);
@@ -297,11 +279,11 @@ function _display_pattern_options_views_form_alter(&$form, &$form_state){
         // add html wrapper around ALL option elements to be replaced in ajax callback
         // NOTE: cannot add to render array as this will affect id and name attributes and values will not get saved as part of row options
         if ($i == 0) {
-            $form['options']['row_options'][$label]['#prefix'] = '<div class="js-replace-container">';
+            $form['options']['row_options'][DPO_FORM_ELEMENT_PREFIX. $label]['#prefix'] = '<div class="js-replace-container">';
         }
 
         if ($i == $len-1) {
-            $form['options']['row_options'][$label]['#suffix'] = '</div>';
+            $form['options']['row_options'][DPO_FORM_ELEMENT_PREFIX. $label]['#suffix'] = '</div>';
         }
 
         $i++;
@@ -359,30 +341,6 @@ function _display_pattern_options_ajax_callback(){
 function _display_pattern_options_form_ctools_node_content_type_edit_form_submit($form, &$form_state) {
     $form_state['conf']['display_pattern_options'] = $form_state['values']['display_pattern_options'];
 }
-
-/**
- * Helper function to determine if display pattern has options
- *
- * @return array
- */
-//function _display_pattern_options_display_pattern_has_options($entity_type, array $bundle_types){
-//
-//    $config = _display_pattern_options_get_config();
-//
-//    $values = array();
-//    foreach ($bundle_types as $bundle_type){
-//        foreach ($config[$entity_type][$bundle_type] as $view_mode => $themes) {
-//            if (!empty($themes)) {
-//                // $view_mode key here ensures no duplicates
-//                $values[$view_mode] = array('value' => $view_mode);
-//            }
-//        }
-//    }
-//
-//    // array values removes associative array keys and replaces with numeric which is what states API seems to need
-//    return array_values($values);
-//}
-
 
 /**
  * Defines custom view_modes by entity
@@ -468,27 +426,6 @@ function _display_pattern_options_get_options_config(){
         )
     );
 }
-
-/**
- * Return array of view modes which have specified $label as an applicable option
- *
- * @param $label
- */
-//function _display_pattern_options_get_view_modes_by_option($label){
-//    $view_modes = array();
-//
-//    $options = _display_pattern_options_get_options_config();
-//    foreach ($options as $view_mode => $modifiers) {
-//
-//        foreach ($modifiers as $modifier => $variation) {
-//            if ($modifier == $label) {
-//                $view_modes[] = $view_mode;
-//            }
-//        }
-//    }
-//
-//    return $view_modes;
-//}
 
 /**
  * Enable custom view modes for selected bundles
