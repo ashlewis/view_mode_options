@@ -1,0 +1,6 @@
+name = Display Pattern Options - Panels
+description = "Provides options for display patterns to panels."
+core = 7.x
+dependencies[] = panelizer
+dependencies[] = ctools
+dependencies[] = display_pattern_options

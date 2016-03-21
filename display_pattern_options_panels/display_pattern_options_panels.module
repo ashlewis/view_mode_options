@@ -1,0 +1,78 @@
+<?php
+
+/**
+* Implements hook_form_FORM_ID_alter().
+*
+* @param $form
+* @param $form_state
+*/
+function display_pattern_options_form_ctools_node_content_type_edit_form_alter(&$form, &$form_state){
+    _display_pattern_options_pane_form_alter($form, $form_state);
+}
+
+/**
+ * Implements hook_panels_pane_content_alter().
+ *
+ * @param $content
+ * @param $pane
+ * @param $args
+ * @param $contexts
+ */
+function display_pattern_options_panels_pane_content_alter($content, $pane, $args, $contexts){
+    _display_pattern_options_expose_custom_pane_config($content, $pane);
+}
+
+/**
+ * Add display_pattern_options value (from panel pane setting) to node object so it available in preprocess
+ *
+ * @param $content
+ * @param $pane
+ */
+function _display_pattern_options_expose_custom_pane_config($content, $pane){
+    if (array_key_exists('display_options', $pane->configuration)) {
+        $content->content['#node']->display_pattern_options = $pane->configuration['display_pattern_options'];
+    }
+}
+
+/**
+ * Add display_pattern_options to view mode forms
+ *
+ * @param $form
+ * @param $form_state
+ */
+function _display_pattern_options_pane_form_alter(&$form, &$form_state){
+
+    $default_option = $form_state['conf']['display_pattern_options'];
+
+    if (array_key_exists('build_mode', $form_state['input'])) {
+        $view_mode = $form_state['input']['build_mode'];
+    } else{
+        $view_mode = $form['build_mode']['#default_value'];
+    }
+
+//    $view_mode_options = _display_pattern_options_get_options_by_view_mode($view_mode);
+//
+//    foreach ($view_mode_options as $label => $options) {
+//        _display_pattern_options_add_form_element($form, $label, $options, $default_option);
+//    }
+
+    $form['build_mode']['#ajax'] = array(
+        // callback wont work here (ctools)
+        // so we provide custom path which provides callback
+        'path' => 'display_pattern_options_ajax_menu_item',
+    );
+
+    $form['dpo'] = _display_pattern_options_build_options_elements($view_mode, $form_state);
+
+    //_display_pattern_options_form_ctools_node_content_type_edit_form_submit($form, $form_state);
+}
+
+/**
+ * Custom submit function to store added config values
+ *
+ * @param $form
+ * @param $form_state
+ */
+//function _display_pattern_options_form_ctools_node_content_type_edit_form_submit($form, &$form_state) {
+//    $form_state['conf']['display_pattern_options'] = $form_state['values']['display_pattern_options'];
+//}
