@@ -50,7 +50,7 @@ function display_pattern_options_preprocess_node(&$variables) {
     //$variables['classes_array'][] = drupal_html_class('display-pattern--' . $variables['view_mode']);
     $variables['classes_array'][] = drupal_html_class($variables['view_mode']);
 
-    if (array_key_exists('display_pattern_options', $variables)) {
+    if (array_key_exists('display_pattern_options', $variables) && is_array($variables['display_pattern_options'])) {
 
         foreach ($variables['display_pattern_options'] as $key => $value) {
             $variables['classes_array'][] = drupal_html_class($variables['view_mode'] .'--'. $key .'-'. $value);
@@ -158,28 +158,42 @@ function _display_pattern_options_add_custom_paths(){
  * @param $options
  * @param $default
  * @param bool $id
+ * @param bool $parent
  * @return array
  */
-function _display_pattern_options_build_form_element($label, $options, $default=false, $id=false){
+function _display_pattern_options_build_form_element($label, $options, $default=false, $id=false, $parent=false, $type=false){
 
     $element = array(
         '#title' => $label,
         '#type' => 'select',
         '#description' => 'Select display pattern options for this build mode',
         '#options' => array('default' => '- Default -') + $options,
-        '#default_value' => $default ? $default : 'default',
-
-        // this ensures form values are available in row_options and do not include the parent wrapper element
-        // see https://www.drupal.org/node/279246#comment-2292322
-        // NOTE: views only - will need to find equivalent for panels
-        '#parents' => array('row_options', $label)
+        '#default_value' => $default ? $default : 'default'
     );
+
+    // this ensures form values are available in row_options (on views form) and does not include the parent wrapper element
+    // see https://www.drupal.org/node/279246#comment-2292322
+    if ($parent) {
+        $element['#parents'] = array($parent, $label);
+
+    } else {
+        $element['#parents'] = array($label);
+    }
+
+
 
     if ($id) {
         // this adds id (that is normally auto added)
         // when we manually build element for ajax replace
         $element['#id'] = $id;
-        $element['#name'] = 'row_options['. $label . ']';
+
+        if ($type == 'view') {
+            $element['#name'] = 'row_options['. $label . ']';
+
+        } elseif ($type == 'panel') {
+            $element['#name'] = 'dpo['. $label .']';
+        }
+
     }
 
     return $element;
@@ -209,15 +223,17 @@ function _display_pattern_options_views_form_alter(&$form, &$form_state){
         $view_mode = $form['options']['row_options']['view_mode']['#default_value'];
     }
 
-    $form['options']['row_options']['dpo'] = _display_pattern_options_build_options_elements($view_mode, $form_state);
+    $form['options']['row_options']['dpo'] = _display_pattern_options_build_options_elements($view_mode, $form_state, 'view');
 }
 
 /**
+ * Build display pattern options form elements
+ *
  * @param $view_mode
  * @param bool $form_state
  * @return array
  */
-function _display_pattern_options_build_options_elements($view_mode, $form_state=false){
+function _display_pattern_options_build_options_elements($view_mode, $form_state=false, $type=false){
 
     $view_mode_options = _display_pattern_options_get_options_by_view_mode($view_mode);
 
@@ -227,6 +243,25 @@ function _display_pattern_options_build_options_elements($view_mode, $form_state
         'content' => array()
     );
 
+    // set parent form elements
+    $parent = false;
+//    if (isset($form_state['view'])) {
+//        $parent = 'row_options';
+//
+//    } elseif (isset($form_state['conf']['build_mode'])) {
+//        $parent = 'dpo';
+//    }
+
+    $id_prefix = '';
+    if ($type == 'view') {
+        $parent = 'row_options';
+        $id_prefix = 'edit-row-options-';
+
+    } elseif ($type == 'panel') {
+        $parent = 'dpo';
+        $id_prefix = 'edit-dpo-';
+    }
+
     foreach ($view_mode_options as $label => $options) {
 
         $default_option = false;
@@ -234,32 +269,26 @@ function _display_pattern_options_build_options_elements($view_mode, $form_state
 
         if ($form_state) {
 
-
-            if (array_key_exists('view', $form_state)) {
+            if ($type == 'view') {
                 // view
-
                 // if we have form state use it to get currently stored values
                 if (!$default_option = $form_state['view']->display[$form_state['view']->current_display]->display_options['row_options'][$label]) {
                     // fallback to default view display
                     $default_option = $form_state['view']->display['default']->display_options['row_options'][$label];
                 }
 
-            } elseif (array_key_exists('build_mode', $form_state)) {
+            } elseif ($type == 'panel') {
                 // panel
-                $default_option = $form_state[$label];
+                $default_option = isset($form_state['conf']['dpo'][$label]) ? $form_state['conf']['dpo'][$label] : 'default';
             }
-
-
-
-
 
         } else {
             // if we do not have form state it is ajax replace and we need to explicitly specify id of form elements
             // (they are normally auto created by form api)
-            $id = 'edit-row-options-'. $label;
+            $id = $id_prefix . $label;
         }
 
-        $elements['content'][] = _display_pattern_options_build_form_element($label, $options, $default_option, $id);
+        $elements['content'][] = _display_pattern_options_build_form_element($label, $options, $default_option, $id, $parent, $type);
     }
 
     return $elements;
@@ -283,11 +312,11 @@ function _display_pattern_options_ajax_callback(){
     }
 
     // panels
-    if (array_key_exists('build_mode', $_POST)) {
-        $view_mode = $_POST['build_mode'];
-    }
+//    if (array_key_exists('build_mode', $_POST)) {
+//        $view_mode = $_POST['build_mode'];
+//    }
 
-    $elements = _display_pattern_options_build_options_elements($view_mode);
+    $elements = _display_pattern_options_build_options_elements($view_mode, false, 'view');
 
     $commands = array();
 
