@@ -262,6 +262,11 @@ function _display_pattern_options_build_options_elements($view_mode, $form_state
         $id_prefix = 'edit-dpo-';
     }
 
+    if (!$form_state) {
+        $elements['#id'] = 'edit-dpo';
+        $elements['#attributes']['class'][] = 'form-wrapper';
+    }
+
     foreach ($view_mode_options as $label => $options) {
 
         $default_option = false;
@@ -286,6 +291,7 @@ function _display_pattern_options_build_options_elements($view_mode, $form_state
             // if we do not have form state it is ajax replace and we need to explicitly specify id of form elements
             // (they are normally auto created by form api)
             $id = $id_prefix . $label;
+
         }
 
         $elements['content'][] = _display_pattern_options_build_form_element($label, $options, $default_option, $id, $parent, $type);
