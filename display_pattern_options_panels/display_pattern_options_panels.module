@@ -63,6 +63,8 @@ function _display_pattern_options_panels_add_custom_paths(){
  */
 function _display_pattern_options_panels_ajax_callback(){
 
+    list($form, $form_state, $form_id, $form_build_id, $commands) = ajax_get_form();
+
     $view_mode = false;
 
     // panels
@@ -73,7 +75,9 @@ function _display_pattern_options_panels_ajax_callback(){
     $elements = _display_pattern_options_build_options_elements($view_mode, false, 'panel');
 
     $commands = array();
-    $commands[] = ajax_command_replace('.js-replace-container', drupal_render($elements));
+   // $commands[] = ajax_command_replace('.js-replace-container', drupal_render($elements));
+
+    $commands[] = ajax_command_replace('.js-replace-container', drupal_render($form['dpo']));
 
     return array(
         '#type' => 'ajax',
