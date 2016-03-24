@@ -65,6 +65,11 @@ function _display_pattern_options_panels_ajax_callback(){
 
     list($form, $form_state, $form_id, $form_build_id, $commands) = ajax_get_form();
 
+
+   // $form_state['rebuild'] = TRUE;
+   // $form['dpo'] =  _display_pattern_options_build_options_elements($_POST['build_mode'], $form_state, 'panel');
+   // return $form['dpo'];
+
     $view_mode = false;
 
     // panels
@@ -106,8 +111,10 @@ function _display_pattern_options_panels_form_alter(&$form, &$form_state){
 
     // @todo: what does this do?
     // form_state['input'] OR form_state['values'] are never set
-    if (array_key_exists('build_mode', $form_state['input'])) {
-        $view_mode = $form_state['input']['build_mode'];
+//    if (array_key_exists('build_mode', $form_state['input'])) {
+//        $view_mode = $form_state['input']['build_mode'];
+    if (array_key_exists('build_mode', $form_state['values'])) {
+        $view_mode = $form_state['values']['build_mode'];
     } else{
         $view_mode = $form['build_mode']['#default_value'];
     }
@@ -116,6 +123,7 @@ function _display_pattern_options_panels_form_alter(&$form, &$form_state){
         // callback wont work here (ctools)
         // so we provide custom path which provides callback
         'path' => 'display_pattern_options_panels_ajax_menu_item',
+        //'wrapper' => 'edit-dpo',
     );
 
     $form['dpo'] = _display_pattern_options_build_options_elements($view_mode, $form_state, 'panel');

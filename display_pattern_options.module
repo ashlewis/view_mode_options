@@ -162,7 +162,7 @@ function _display_pattern_options_add_custom_paths(){
  * @return array
  */
 function _display_pattern_options_build_form_element($label, $options, $default=false, $id=false, $parent=false, $type=false){
-    $i =1;
+
     $element = array(
         '#title' => $label,
         '#type' => 'select',
