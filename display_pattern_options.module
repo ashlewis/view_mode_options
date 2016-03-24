@@ -162,13 +162,16 @@ function _display_pattern_options_add_custom_paths(){
  * @return array
  */
 function _display_pattern_options_build_form_element($label, $options, $default=false, $id=false, $parent=false, $type=false){
-
+    $i =1;
     $element = array(
         '#title' => $label,
         '#type' => 'select',
         '#description' => 'Select display pattern options for this build mode',
         '#options' => array('default' => '- Default -') + $options,
-        '#default_value' => $default ? $default : 'default'
+        '#default_value' => $default ? $default : 'default',
+        // @todo: temp hack to prevent validation errors
+        // needs to be fixed properly
+        '#validated' => true
     );
 
     // this ensures form values are available in row_options (on views form) and does not include the parent wrapper element
@@ -240,7 +243,8 @@ function _display_pattern_options_build_options_elements($view_mode, $form_state
     $elements = array(
         '#type' => 'container',
         '#attributes' => array('class'=>array('js-replace-container')),
-        'content' => array()
+        'content' => array(),
+
     );
 
     // set parent form elements
