@@ -1,0 +1,5 @@
+name = Display Pattern Options - Views
+description = "Provides options for display patterns to views."
+core = 7.x
+dependencies[] = views
+dependencies[] = display_pattern_options

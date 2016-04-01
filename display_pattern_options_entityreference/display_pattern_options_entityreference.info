@@ -1,0 +1,5 @@
+name = Display Pattern Options - Entity reference
+description = "Provides options for display patterns to Entity reference."
+core = 7.x
+dependencies[] = entityreference
+dependencies[] = display_pattern_options

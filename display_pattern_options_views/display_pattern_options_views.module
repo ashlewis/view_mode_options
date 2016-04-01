@@ -1,0 +1,209 @@
+<?php
+
+
+/**
+ * Implements hook_menu().
+ *
+ * @return array
+ */
+function display_pattern_options_views_menu(){
+    return _display_pattern_options_views_add_custom_paths();
+}
+
+/**
+ * Add custom ajax endpoints
+ *
+ * @return array
+ */
+function _display_pattern_options_views_add_custom_paths(){
+
+    $items = array();
+
+    $items['display-pattern-options/views'] = array(
+        'page callback' => '_display_pattern_options_views_ajax_get_form',
+        //'page callback' => 'views_ui_ajax_get_form',
+        // pass form id as argument to page callback function
+        'page arguments' => array('views_ui_edit_display_form'),
+        // Ensure correct format for rendered content
+        'delivery callback' => 'ajax_deliver',
+        'access callback' => TRUE,
+        // Ensure correct theme is used for custom ajax path
+        'theme callback' => 'ajax_base_page_theme',
+        'type' => MENU_CALLBACK
+    );
+
+    return $items;
+}
+
+/**
+ * Menu callback; handles AJAX form submissions similar to ajax_form_callback(), but can be used for uncached forms.
+ *
+ * NOTE; copied from views ui module
+ *
+ * ajax_form_callback(), the menu callback for the system/ajax path, requires
+ * the form to be retrievable from the form cache, because it lacks a trusted
+ * $form_id argument with which to call drupal_retrieve_form(). When AJAX is
+ * wanted on a non-cacheable form, #ajax['path'] can be set to a path whose
+ * menu router item's 'page callback' is this function, and whose
+ * 'page arguments' is the form id, optionally followed by additional build
+ * arguments, as expected by drupal_get_form().
+ *
+ * The same caution must be used when defining a hook_menu() entry with this
+ * page callback as is used when defining a hook_menu() entry with the
+ * 'drupal_get_form' page callback: a 'page arguments' must be specified with a
+ * literal value as the first argument, because $form_id determines which form
+ * builder function gets called, so must be safe from user tampering.
+ *
+ * @see drupal_get_form()
+ * @see ajax_form_callback()
+ * @see http://drupal.org/node/774876
+ */
+function _display_pattern_options_views_ajax_get_form($form_id) {
+    
+    // for some reason, when view mode is changed
+    // form is submitted with pre-updated options values
+    // which can fail validation, so we ensure all are set to default on ajax reload    
+    foreach ($_POST['row_options'] as $option => $value) {
+        if ($option != 'view_mode') {
+            $_POST['row_options'][$option] = 'default';
+        }
+    }
+
+    // @see ajax_get_form()
+    $form_state = array(
+        'no_redirect' => TRUE,
+    );
+    $form_state['rebuild_info']['copy']['#build_id'] = TRUE;
+    $form_state['rebuild_info']['copy']['#action'] = TRUE;
+
+    // @see drupal_get_form()
+    $args = func_get_args();
+    array_shift($args);
+    $form_state['build_info']['args'] = $args;
+
+    $form_state['form_key'] = 'display';
+    $form_state['display_id'] = 'page';
+    $form_state['section'] = 'row_options';
+
+    $form = drupal_build_form($form_id, $form_state);
+    $form_state['triggering_element'] = $form['options']['row_options']['view_mode'];
+
+    // @see ajax_form_callback()
+    if (!empty($form_state['triggering_element'])) {
+        $callback = $form_state['triggering_element']['#ajax']['callback'];
+    }
+    if (!empty($callback) && function_exists($callback)) {
+        return $callback($form, $form_state);
+    }
+}
+
+
+
+/**
+ * Implements hook_form_FORM_ID_alter().
+ *
+ * @param $form
+ * @param $form_state
+ */
+function display_pattern_options_views_form_views_ui_edit_display_form_alter(&$form, &$form_state){
+    _display_pattern_options_views_form_alter($form, $form_state);
+}
+
+
+/**
+ * Implements hook_entity_prepare_view().
+ *
+ *
+ * @param $entities
+ * @param $type
+ * @param $langcode
+ */
+function display_pattern_options_views_entity_prepare_view($entities, $type, $langcode){
+    _display_pattern_options_views_expose_custom_config($entities);
+}
+
+/**
+ * Add display_pattern_options value to node object so it available in preprocess
+ *
+ * see display_pattern_options_preprocess_node() where these are added to html as classes
+ *
+ * @param $entities
+ */
+function _display_pattern_options_views_expose_custom_config($entities){
+
+    $modifiers = _display_pattern_options_get_option_labels();
+
+    foreach ($entities as &$entity) {
+
+        if (property_exists($entity, 'view')) {
+
+            $entity->display_pattern_options = array();
+
+            // get default view display settings
+            if (isset($entity->view->display['default']->display_options['row_options'])) {
+                foreach ($entity->view->display['default']->display_options['row_options'] as $label => $option) {
+                    // filter out "non-display pattern option" row options
+                    if (in_array($label, $modifiers)) {
+                        $entity->display_pattern_options[$label] = $option;
+                    }
+                }
+            }
+
+            if (isset($entity->view->display[$entity->view->current_display]->display_options['row_options'])) {
+                // overwrite with current view display settings - if available (there is prob a better way of doing this)
+                foreach ($entity->view->display[$entity->view->current_display]->display_options['row_options'] as $label => $option) {
+                    // filter out "non-display pattern option" row options
+                    if (in_array($label, $modifiers)) {
+                        $entity->display_pattern_options[$label] = $option;
+                    }
+                }
+            }
+        }
+    }
+}
+
+
+/**
+ * Add display_pattern_options to view mode forms
+ *
+ * @param $form
+ * @param $form_state
+ */
+function _display_pattern_options_views_form_alter(&$form, &$form_state){
+
+    if ($form_state['section'] != 'row_options') {
+        return;
+    }
+
+    $form['options']['row_options']['view_mode']['#ajax'] = array(
+        // callback wont work directly here (ctools)
+        // we must provide custom path which needs to do some work before invoking callback provided here
+        'path' => 'display-pattern-options/views',
+        'callback' => '_display_pattern_options_views_ajax_callback',
+        'wrapper' => 'dpo-ajax-replace'
+    );
+
+    if (array_key_exists('row_options', $form_state['input'])) {
+        $view_mode = $form_state['input']['row_options']['view_mode'];
+    } else{
+        $view_mode = $form['options']['row_options']['view_mode']['#default_value'];
+    }
+
+    $form['options']['row_options']['dpo'] = _display_pattern_options_build_options_elements($view_mode, $form_state, 'view');
+}
+
+
+/**
+ * Custom ajax callback
+ *
+ * replace all display_pattern_option select elements with those applicable to selected view_mode
+ * when view_mode element is changed
+ *
+ * @return array
+ */
+function _display_pattern_options_views_ajax_callback(&$form, &$form_state){
+
+    return $form['options']['row_options']['dpo'];
+
+
+}

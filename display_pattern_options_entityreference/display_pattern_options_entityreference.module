@@ -1,0 +1,43 @@
+<?php
+
+/**
+ * Implements hook_form_FORM_ID_alter().
+ *
+ * @param $form
+ * @param $form_state
+ */
+function display_pattern_options_entityreference_form_field_ui_display_overview_form_alter(&$form, &$form_state){
+    
+    _display_pattern_options_entityreference_form_alter($form, $form_state);
+
+}
+
+
+/**
+ * @param $form
+ * @param $form_state
+ */
+function _display_pattern_options_entityreference_form_alter(&$form, &$form_state){
+    $i =1 ;
+    if (isset($form['fields']['field_article_ref']['format']['settings_edit_form']['settings'])) {
+
+        if (isset($form_state['input']['fields']['field_article_ref']['format']['settings_edit_form']['settings']['view_mode'])) {
+            $view_mode = $form_state['input']['fields']['field_article_ref']['format']['settings_edit_form']['settings']['view_mode'];
+
+        } else{
+            $view_mode = $form['fields']['field_article_ref']['format']['settings_edit_form']['settings']['view_mode']['#default_value'];
+        }
+
+        $form['fields']['field_article_ref']['format']['settings_edit_form']['settings']['build_mode']['#ajax'] = array(
+            // callback wont work directly here (ctools)
+            // we must provide custom path which needs to do some work before invoking callback provided here
+            'path' => 'display-pattern-options/entityreference',
+            'callback' => '_display_pattern_options_entityreference_ajax_callback',
+            'wrapper' => 'dpo-ajax-replace',
+        );
+
+        $form['fields']['field_article_ref']['format']['settings_edit_form']['settings']['dpo'] = _display_pattern_options_build_options_elements($view_mode, $form_state, 'entityreference');
+        
+    }
+}
+
