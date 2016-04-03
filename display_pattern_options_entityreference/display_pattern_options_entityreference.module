@@ -18,7 +18,7 @@ function display_pattern_options_entityreference_form_field_ui_display_overview_
  * @param $form_state
  */
 function _display_pattern_options_entityreference_form_alter(&$form, &$form_state){
-    $i =1 ;
+
     if (isset($form['fields']['field_article_ref']['format']['settings_edit_form']['settings'])) {
 
         if (isset($form_state['input']['fields']['field_article_ref']['format']['settings_edit_form']['settings']['view_mode'])) {
@@ -28,7 +28,9 @@ function _display_pattern_options_entityreference_form_alter(&$form, &$form_stat
             $view_mode = $form['fields']['field_article_ref']['format']['settings_edit_form']['settings']['view_mode']['#default_value'];
         }
 
-        $form['fields']['field_article_ref']['format']['settings_edit_form']['settings']['build_mode']['#ajax'] = array(
+
+
+        $form['fields']['field_article_ref']['format']['settings_edit_form']['settings']['view_mode']['#ajax'] = array(
             // callback wont work directly here (ctools)
             // we must provide custom path which needs to do some work before invoking callback provided here
             'path' => 'display-pattern-options/entityreference',
@@ -37,7 +39,27 @@ function _display_pattern_options_entityreference_form_alter(&$form, &$form_stat
         );
 
         $form['fields']['field_article_ref']['format']['settings_edit_form']['settings']['dpo'] = _display_pattern_options_build_options_elements($view_mode, $form_state, 'entityreference');
-        
+
+        $form['fields']['field_article_ref']['format']['settings_edit_form']['actions']['save_settings']['#submit'][] = '_display_pattern_options_entityreference_form_submit';
+
     }
+}
+
+function _display_pattern_options_entityreference_form_submit(&$form, &$form_state){
+
+    $i=1;
+
+}
+
+function display_pattern_options_entityreference_field_formatter_info_alter(&$info) {
+    // Add a setting to a formatter type.
+    $info['entityreference_entity_view']['settings'] += array(
+        'dpo' => array(
+            'content' => array(
+                'colour' => 'default',
+                'align' => 'default'
+            )
+        )
+    );
 }
 

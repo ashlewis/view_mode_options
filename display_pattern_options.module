@@ -93,9 +93,9 @@ function _display_pattern_options_build_form_element($label, $options, $default=
     if ($parent) {
         $element['#parents'] = array($parent, $label);
 
-    } else {
+    } /*else {
         $element['#parents'] = array($label);
-    }
+    }*/
 
     return $element;
 }
@@ -131,7 +131,7 @@ function _display_pattern_options_build_options_elements($view_mode, $form_state
         $parent = 'dpo';
 
     } else if ($type == 'entityreference') {
-        $parent = 'settings';
+        //$parent = 'settings';
     }
 
     foreach ($view_mode_options as $label => $options) {
@@ -151,9 +151,22 @@ function _display_pattern_options_build_options_elements($view_mode, $form_state
         } else if ($type == 'panel') {
             // panel
             $default_option = isset($form_state['conf']['dpo'][$label]) ? $form_state['conf']['dpo'][$label] : 'default';
+
+        } else if ($type == 'entityreference') {
+            $bundle = field_extract_bundle('node', 'article');
+            $instances = field_info_instances('node', $bundle);
+            $instances['field_article_ref']['display']['default']['settings']['dpo']['content'][$label];
+            // panel
+            if (isset($instances['field_article_ref']['display']['default']['settings']['dpo']['content'][$label])) {
+                $default_option = $instances['field_article_ref']['display']['default']['settings']['dpo']['content'][$label];
+            } else if (isset($form_state['formatter_settings']['field_article_ref']['dpo']['content'][$label])){
+                $default_option = $form_state['formatter_settings']['field_article_ref']['dpo']['content'][$label];
+            } else {
+                $default_option = 'default';
+            }
         }
 
-        $elements['content'][] = _display_pattern_options_build_form_element($label, $options, $default_option, $parent);
+        $elements['content'][$label] = _display_pattern_options_build_form_element($label, $options, $default_option, $parent);
     }
 
     return $elements;
