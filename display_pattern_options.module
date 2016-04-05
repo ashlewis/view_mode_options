@@ -155,13 +155,12 @@ function _display_pattern_options_build_options_elements($view_mode, $form_state
         } else if ($type == 'entityreference') {
             $bundle = field_extract_bundle('node', 'article');
             $instances = field_info_instances('node', $bundle);
-            $instances['field_article_ref']['display']['default']['settings']['dpo']['content'][$label];
             // panel
-            if (isset($instances['field_article_ref']['display']['default']['settings']['dpo']['content'][$label])) {
-                $default_option = $instances['field_article_ref']['display']['default']['settings']['dpo']['content'][$label];
-            } else if (isset($form_state['formatter_settings']['field_article_ref']['dpo']['content'][$label])){
+            if (isset($form_state['formatter_settings']['field_article_ref']['dpo']['content'][$label])){
                 $default_option = $form_state['formatter_settings']['field_article_ref']['dpo']['content'][$label];
-            } else {
+            } else if (isset($instances['field_article_ref']['display']['default']['settings']['dpo']['content'][$label])) {
+                $default_option = $instances['field_article_ref']['display']['default']['settings']['dpo']['content'][$label];
+            }  else {
                 $default_option = 'default';
             }
         }

@@ -1,6 +1,94 @@
 <?php
 
 /**
+ * Implements hook_menu().
+ *
+ * @return array
+ */
+function display_pattern_options_entityreference_menu(){
+    return _display_pattern_options_entityreference_add_custom_paths();
+}
+
+/**
+ * Add custom ajax endpoints
+ *
+ * @return array
+ */
+function _display_pattern_options_entityreference_add_custom_paths(){
+
+    $items = array();
+
+    $items['display-pattern-options/entityreference'] = array(
+        'page callback' => '_display_pattern_options_entityreference_ajax_get_form',
+        // pass form id as argument to page callback function
+        'page arguments' => array('field_ui_display_overview_form'),
+        // Ensure correct format for rendered content
+        'delivery callback' => 'ajax_deliver',
+        'access callback' => TRUE,
+        // Ensure correct theme is used for custom ajax path
+        'theme callback' => 'ajax_base_page_theme',
+        'type' => MENU_CALLBACK
+    );
+
+    return $items;
+}
+
+/**
+ * Menu callback; handles AJAX form submissions similar to ajax_form_callback(), but can be used for uncached forms.
+ *
+ * NOTE; copied from views ui module
+ *
+ * ajax_form_callback(), the menu callback for the system/ajax path, requires
+ * the form to be retrievable from the form cache, because it lacks a trusted
+ * $form_id argument with which to call drupal_retrieve_form(). When AJAX is
+ * wanted on a non-cacheable form, #ajax['path'] can be set to a path whose
+ * menu router item's 'page callback' is this function, and whose
+ * 'page arguments' is the form id, optionally followed by additional build
+ * arguments, as expected by drupal_get_form().
+ *
+ * The same caution must be used when defining a hook_menu() entry with this
+ * page callback as is used when defining a hook_menu() entry with the
+ * 'drupal_get_form' page callback: a 'page arguments' must be specified with a
+ * literal value as the first argument, because $form_id determines which form
+ * builder function gets called, so must be safe from user tampering.
+ *
+ * @see drupal_get_form()
+ * @see ajax_form_callback()
+ * @see http://drupal.org/node/774876
+ */
+function _display_pattern_options_entityreference_ajax_get_form($form_id) {
+
+    // we need to include this (for validation function), which is why we cant use views ui function directly
+    //require_once('/sites/all/modules/ctools/plugins/content_types/node/node.inc');
+
+    // we could do this to avoid duplicating existing code
+    // but then would require views ui as dependency??
+    //return views_ui_ajax_get_form($form_id);
+
+    // @see ajax_get_form()
+    $form_state = array(
+        'no_redirect' => TRUE,
+    );
+    $form_state['rebuild_info']['copy']['#build_id'] = TRUE;
+    $form_state['rebuild_info']['copy']['#action'] = TRUE;
+
+    // @see drupal_get_form()
+    $args = func_get_args();
+    array_shift($args);
+    $form_state['build_info']['args'] = $args;
+
+    $form = drupal_build_form($form_id, $form_state);
+
+    // @see ajax_form_callback()
+    if (!empty($form_state['triggering_element'])) {
+        $callback = $form_state['triggering_element']['#ajax']['callback'];
+    }
+    if (!empty($callback) && function_exists($callback)) {
+        return $callback($form, $form_state);
+    }
+}
+
+/**
  * Implements hook_form_FORM_ID_alter().
  *
  * @param $form
@@ -21,10 +109,14 @@ function _display_pattern_options_entityreference_form_alter(&$form, &$form_stat
 
     if (isset($form['fields']['field_article_ref']['format']['settings_edit_form']['settings'])) {
 
-        if (isset($form_state['input']['fields']['field_article_ref']['format']['settings_edit_form']['settings']['view_mode'])) {
+        if (isset($form_state['input']['fields']['field_article_ref']['settings_edit_form']['settings']['view_mode'])) {
+            $view_mode = $form_state['input']['fields']['field_article_ref']['settings_edit_form']['settings']['view_mode'];
+
+        // @todo: test this is this with format key required?
+        } else if (isset($form_state['input']['fields']['field_article_ref']['format']['settings_edit_form']['settings']['view_mode'])) {
             $view_mode = $form_state['input']['fields']['field_article_ref']['format']['settings_edit_form']['settings']['view_mode'];
 
-        } else{
+        } else {
             $view_mode = $form['fields']['field_article_ref']['format']['settings_edit_form']['settings']['view_mode']['#default_value'];
         }
 
@@ -63,3 +155,34 @@ function display_pattern_options_entityreference_field_formatter_info_alter(&$in
     );
 }
 
+
+/**
+ * Custom ajax callback
+ *
+ * replace all display_pattern_option select elements with those applicable to selected view_mode
+ * when view_mode element is changed
+ *
+ * @return array
+ */
+function _display_pattern_options_entityreference_ajax_callback(&$form, &$form_state){
+
+    return $form['fields']['field_article_ref']['format']['settings_edit_form']['settings']['dpo'];
+}
+
+
+function display_pattern_options_entityreference_field_attach_view_alter(&$output, $context){
+
+    //$display = field_get_display($instance, $view_mode, $entity);
+
+    $bundle = field_extract_bundle('node', 'article');
+    $instances = field_info_instances('node', $bundle);
+
+    $output['#attributes']['class'][] = 'test';
+
+    $i = 1;
+}
+
+
+function display_pattern_options_entityreference_field_display_alter(&$display, $context){
+    $i = 1;
+}
