@@ -186,3 +186,14 @@ function display_pattern_options_entityreference_field_attach_view_alter(&$outpu
 function display_pattern_options_entityreference_field_display_alter(&$display, $context){
     $i = 1;
 }
+
+function display_pattern_options_entityreference_preprocess_field(&$vars){
+
+    if ($vars['element']['#field_name'] == 'field_article_ref') {
+        $bundle = field_extract_bundle('node', 'article');
+        $instances = field_info_instances('node', $bundle);
+        $i = 1;
+        $vars['items']['0']['node'][8]['dpo'] = 'test';
+        $vars['classes_array'][]  =  'dpo';
+    }
+}
