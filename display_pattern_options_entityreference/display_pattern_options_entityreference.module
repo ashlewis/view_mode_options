@@ -107,22 +107,22 @@ function display_pattern_options_entityreference_form_field_ui_display_overview_
  */
 function _display_pattern_options_entityreference_form_alter(&$form, &$form_state){
 
-    if (isset($form['fields']['field_article_ref']['format']['settings_edit_form']['settings'])) {
+    if ($form_state['formatter_settings_edit'] && field_info_field($form_state['formatter_settings_edit'])['type'] == 'entityreference') {
 
-        if (isset($form_state['input']['fields']['field_article_ref']['settings_edit_form']['settings']['view_mode'])) {
-            $view_mode = $form_state['input']['fields']['field_article_ref']['settings_edit_form']['settings']['view_mode'];
+        $field_name = $form_state['formatter_settings_edit'];
 
-        // @todo: test this is this with format key required?
-        } else if (isset($form_state['input']['fields']['field_article_ref']['format']['settings_edit_form']['settings']['view_mode'])) {
-            $view_mode = $form_state['input']['fields']['field_article_ref']['format']['settings_edit_form']['settings']['view_mode'];
+        if (isset($form_state['input']['fields'][$field_name]['settings_edit_form']['settings']['view_mode'])) {
+            $view_mode = $form_state['input']['fields'][$field_name]['settings_edit_form']['settings']['view_mode'];
+
+            // @todo: test this is this with format key required?
+        } else if (isset($form_state['input']['fields'][$field_name]['format']['settings_edit_form']['settings']['view_mode'])) {
+            $view_mode = $form_state['input']['fields'][$field_name]['format']['settings_edit_form']['settings']['view_mode'];
 
         } else {
-            $view_mode = $form['fields']['field_article_ref']['format']['settings_edit_form']['settings']['view_mode']['#default_value'];
+            $view_mode = $form['fields'][$field_name]['format']['settings_edit_form']['settings']['view_mode']['#default_value'];
         }
 
-
-
-        $form['fields']['field_article_ref']['format']['settings_edit_form']['settings']['view_mode']['#ajax'] = array(
+        $form['fields'][$field_name]['format']['settings_edit_form']['settings']['view_mode']['#ajax'] = array(
             // callback wont work directly here (ctools)
             // we must provide custom path which needs to do some work before invoking callback provided here
             'path' => 'display-pattern-options/entityreference',
@@ -130,18 +130,40 @@ function _display_pattern_options_entityreference_form_alter(&$form, &$form_stat
             'wrapper' => 'dpo-ajax-replace',
         );
 
-        $form['fields']['field_article_ref']['format']['settings_edit_form']['settings']['dpo'] = _display_pattern_options_build_options_elements($view_mode, $form_state, 'entityreference');
-
-        $form['fields']['field_article_ref']['format']['settings_edit_form']['actions']['save_settings']['#submit'][] = '_display_pattern_options_entityreference_form_submit';
+        $form['fields'][$field_name]['format']['settings_edit_form']['settings']['dpo'] = _display_pattern_options_build_options_elements($view_mode, $form_state, 'entityreference');
 
     }
+
+
+
+//        if (isset($form_state['input']['fields']['field_article_ref']['settings_edit_form']['settings']['view_mode'])) {
+//            $view_mode = $form_state['input']['fields']['field_article_ref']['settings_edit_form']['settings']['view_mode'];
+//
+//        // @todo: test this is this with format key required?
+//        } else if (isset($form_state['input']['fields']['field_article_ref']['format']['settings_edit_form']['settings']['view_mode'])) {
+//            $view_mode = $form_state['input']['fields']['field_article_ref']['format']['settings_edit_form']['settings']['view_mode'];
+//
+//        } else {
+//            $view_mode = $form['fields']['field_article_ref']['format']['settings_edit_form']['settings']['view_mode']['#default_value'];
+//        }
+//
+//
+//
+//        $form['fields']['field_article_ref']['format']['settings_edit_form']['settings']['view_mode']['#ajax'] = array(
+//            // callback wont work directly here (ctools)
+//            // we must provide custom path which needs to do some work before invoking callback provided here
+//            'path' => 'display-pattern-options/entityreference',
+//            'callback' => '_display_pattern_options_entityreference_ajax_callback',
+//            'wrapper' => 'dpo-ajax-replace',
+//        );
+//
+//        $form['fields']['field_article_ref']['format']['settings_edit_form']['settings']['dpo'] = _display_pattern_options_build_options_elements($view_mode, $form_state, 'entityreference');
+//
+//        $form['fields']['field_article_ref']['format']['settings_edit_form']['actions']['save_settings']['#submit'][] = '_display_pattern_options_entityreference_form_submit';
+
+
 }
 
-function _display_pattern_options_entityreference_form_submit(&$form, &$form_state){
-
-    $i=1;
-
-}
 
 function display_pattern_options_entityreference_field_formatter_info_alter(&$info) {
     // Add a setting to a formatter type.
@@ -170,30 +192,13 @@ function _display_pattern_options_entityreference_ajax_callback(&$form, &$form_s
 }
 
 
-function display_pattern_options_entityreference_field_attach_view_alter(&$output, $context){
-
-    //$display = field_get_display($instance, $view_mode, $entity);
-
-    $bundle = field_extract_bundle('node', 'article');
-    $instances = field_info_instances('node', $bundle);
-
-    $output['#attributes']['class'][] = 'test';
-
-    $i = 1;
-}
-
-
-function display_pattern_options_entityreference_field_display_alter(&$display, $context){
-    $i = 1;
-}
-
 function display_pattern_options_entityreference_preprocess_field(&$vars){
 
     if ($vars['element']['#field_name'] == 'field_article_ref') {
         $bundle = field_extract_bundle('node', 'article');
         $instances = field_info_instances('node', $bundle);
-        $i = 1;
-        $vars['items']['0']['node'][8]['dpo'] = 'test';
-        $vars['classes_array'][]  =  'dpo';
+        $vars['items']['0']['node'][21]['#node']->display_pattern_options = $instances['field_article_ref']['display']['default']['settings']['dpo']['content'];
+        $vars['items']['0']['node'][8]['#node']->display_pattern_options = $instances['field_article_ref']['display']['default']['settings']['dpo']['content'];
+
     }
 }
