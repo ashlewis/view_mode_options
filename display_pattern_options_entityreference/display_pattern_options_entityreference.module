@@ -193,12 +193,28 @@ function _display_pattern_options_entityreference_ajax_callback(&$form, &$form_s
 
 
 function display_pattern_options_entityreference_preprocess_field(&$vars){
-
-    if ($vars['element']['#field_name'] == 'field_article_ref') {
+    $type = $vars['element']['#field_type'];
+    if ($type == 'entityreference') {
+        $name = $type = $vars['element']['#field_name'];
         $bundle = field_extract_bundle('node', 'article');
         $instances = field_info_instances('node', $bundle);
-        $vars['items']['0']['node'][21]['#node']->display_pattern_options = $instances['field_article_ref']['display']['default']['settings']['dpo']['content'];
-        $vars['items']['0']['node'][8]['#node']->display_pattern_options = $instances['field_article_ref']['display']['default']['settings']['dpo']['content'];
 
+        if (isset($instances[$name]['display']['default']['settings']['dpo']['content'])) {
+
+            foreach ($vars['items'] as $i => $item) {
+                foreach ($vars['items'][$i]['node'] as $j => $val) {
+                    if (is_numeric($j)) {
+                        $vars['items'][$i]['node'][$j]['#node']->display_pattern_options = $instances[$name]['display']['default']['settings']['dpo']['content'];
+                    }
+                }
+            }
+        }
     }
+//    if ($vars['element']['#field_name'] == 'field_article_ref') {
+//        $bundle = field_extract_bundle('node', 'article');
+//        $instances = field_info_instances('node', $bundle);
+//        $vars['items']['0']['node'][21]['#node']->display_pattern_options = $instances['field_article_ref']['display']['default']['settings']['dpo']['content'];
+//        $vars['items']['0']['node'][8]['#node']->display_pattern_options = $instances['field_article_ref']['display']['default']['settings']['dpo']['content'];
+//
+//    }
 }
