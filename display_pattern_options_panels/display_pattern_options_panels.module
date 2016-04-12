@@ -59,8 +59,7 @@ function _display_pattern_options_panels_add_custom_paths(){
 function _display_pattern_options_panels_ajax_get_form($form_id) {
 
     // we need to include this (for validation function), which is why we cant use views ui function directly
-    require_once('/sites/all/modules/ctools/plugins/content_types/node/node.inc');
-
+    require_once(drupal_get_path('module', 'ctools') . '/plugins/content_types/node/node.inc');
     // we could do this to avoid duplicating existing code
     // but then would require views ui as dependency??
     //return views_ui_ajax_get_form($form_id);
