@@ -15,7 +15,17 @@ function display_pattern_options_entity_info_alter(&$entity_info) {
  * @param $variables
  */
 function display_pattern_options_preprocess_node(&$variables) {
-    // Add view-mode class to nodes
+    _display_pattern_options_add_classes($variables);
+    _display_pattern_options_set_tpl_variables($variables);
+        _display_pattern_options_add_tpl_suggestions($variables);
+}
+
+/**
+ * Add dpo classes to node
+ *
+ * @param $variables
+ */
+function _display_pattern_options_add_classes(&$variables){
     // do we need this??
     //$variables['classes_array'][] = drupal_html_class('content-pattern--' . $variables['type']);
     //$variables['classes_array'][] = drupal_html_class('display-pattern--' . $variables['view_mode']);
@@ -27,27 +37,97 @@ function display_pattern_options_preprocess_node(&$variables) {
             $variables['classes_array'][] = drupal_html_class($variables['view_mode'] .'--'. $key .'-'. $value);
         }
     }
+}
 
-    // @TODO:
-    // make this content agnostic / configurable
-    $fields = array(
-        'page' => array(
-            'title' => 'title',
-            'image' => 'field_page_image',
-            'content' => 'body'
+function _display_pattern_options_get_field_config(){
+    return array(
+        'hero' => array(
+            'page' => array(
+                'title' => 'title',
+                'image' => 'field_page_image',
+                'content' => 'body'
+            ),
+            'article' => array(
+                'title' => 'title',
+                'image' => 'field_image',
+                'content' => 'body'
+            )
         ),
-        'article' => array(
-            'title' => 'title',
-            'image' => 'field_image',
-            'content' => 'body'
+        'promo' => array(
+            'page' => array(
+                'title' => 'title',
+                'image' => 'field_page_image',
+                'content' => 'body'
+            ),
+            'article' => array(
+                'title' => 'title',
+                'image' => 'field_image',
+                'content' => 'body'
+            )
         )
     );
-    foreach ($fields[$variables['type']] as $key => $val) {
-        $variables['content']['dpo_'. $key] = $variables['content'][$val];
-        unset($variables['content'][$val]);
-    }
+}
+// TODO: consolidate with _display_pattern_options_get_field_config
+// we can prob use this instead of _display_pattern_options_get_field_config
+function _display_pattern_options_get_field_config_2(){
+    return array(
+        'hero' => array(
+            'page' => array(
+                'title' => 'title',
+                'field_page_image' => 'image',
+                'body' => 'content'
+            ),
+            'article' => array(
+                'title' => 'title',
+                'field_image' => 'image',
+                'body' => 'content'
+            )
+        ),
+        'promo' => array(
+            'page' => array(
+                'title' => 'title',
+                'field_page_image' => 'image',
+                'body' => 'content'
+            ),
+            'article' => array(
+                'title' => 'title',
+                'field_image' => 'image',
+                'body' => 'content'
+            )
+        )
+    );
+}
 
-    // add view mode specific template suggestions
+/**
+ * set dpo tpl variables
+ *
+ * @param $variables
+ */
+function _display_pattern_options_set_tpl_variables(&$variables){
+
+    $fields = _display_pattern_options_get_field_config();
+
+    if (isset($fields[$variables['view_mode']])) {
+
+        foreach ($fields[$variables['view_mode']][$variables['type']] as $key => $val) {
+
+            if ($val == 'title') {
+                $variables['content']['dpo_'. $key] = $variables['title'];
+
+            } else {
+                $variables['content']['dpo_'. $key] = $variables['content'][$val];
+                unset($variables['content'][$val]);
+            }
+        }
+    }
+}
+
+/**
+ * Add template suggestions
+ *
+ * @param $variables
+ */
+function _display_pattern_options_add_tpl_suggestions(&$variables){
     $variables['theme_hook_suggestions'][] = 'node__' . $variables['view_mode'];
     $variables['theme_hook_suggestions'][] = 'node__' . $variables['view_mode'] . '_' . $variables['type'];
 }
@@ -70,6 +150,53 @@ function display_pattern_options_theme_registry_alter(&$theme_registry) {
             $theme_registry[$key]['type'] = 'module';
         }
     }
+}
+
+/**
+ * Implements template_preprocess_field.
+ *
+ * @param  array $variables
+ * @param  string $hook
+ */
+function display_pattern_options_preprocess_field(&$variables, $hook){
+
+    _display_pattern_options_add_field_bem_classes($variables);
+
+}
+
+/**
+ * Add BEM style classes to fields
+ *
+ * @param array $variables
+ */
+function _display_pattern_options_add_field_bem_classes(&$variables){
+
+    $fields = _display_pattern_options_get_field_config_2();
+
+    $view_mode = $variables['element']['#view_mode'];
+    $bundle = $variables['element']['#bundle'];
+    $field_name = $variables['element']['#field_name'];
+
+    if (isset($fields[$view_mode][$bundle][$field_name])) {
+       $filter = array(' ' => '-', '/' => '-', '[' => '-', ']' => '');
+       $variables['classes_array'][] = drupal_clean_css_identifier($view_mode .'__'. $fields[$view_mode][$bundle][$field_name], $filter);
+    }
+
+//    if (array_key_exists($variables['element']['#bundle'], $bem_info)) {
+//
+//        $element = $variables['element'];
+//
+//        // field_ here is to be stripped from field colection bundles
+//        $block =  str_replace(array('field_', '_'), array('', '-'), $element['#bundle']) .'__';
+//
+//        $elementClass = $block. str_replace(array('field_'. $bem_info[$element['#bundle']], '_'), array('', '-'), $element['#field_name']);
+//
+//        $filter = array(' ' => '-', '/' => '-', '[' => '-', ']' => '');
+//
+//        $variables['classes_array'][] = drupal_clean_css_identifier($elementClass, $filter);
+//        $variables['classes_array'][] = drupal_clean_css_identifier($elementClass .'--'. str_replace('_', '-', $element['#view_mode']), $filter);
+//
+//    }
 }
 
 // @TODO: might be useful??
