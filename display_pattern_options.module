@@ -13,9 +13,11 @@ function display_pattern_options_entity_info_alter(&$entity_info) {
  * @param $variables
  */
 function display_pattern_options_preprocess_node(&$variables) {
-    _display_pattern_options_add_classes($variables);
-    _display_pattern_options_set_tpl_variables($variables);
-    _display_pattern_options_add_tpl_suggestions($variables);
+
+    // @TODO: only do these conditionally based on config values
+    _display_pattern_options_add_node_classes($variables);
+    _display_pattern_options_add_node_tpl_variables($variables);
+    _display_pattern_options_add_node_tpl_suggestions($variables);
 }
 
 /**
@@ -23,10 +25,15 @@ function display_pattern_options_preprocess_node(&$variables) {
  *
  * @param $variables
  */
-function _display_pattern_options_add_classes(&$variables){
+function _display_pattern_options_add_node_classes(&$variables){
     // do we need this??
     //$variables['classes_array'][] = drupal_html_class('content-pattern--' . $variables['type']);
     //$variables['classes_array'][] = drupal_html_class('display-pattern--' . $variables['view_mode']);
+
+
+    // remove default classes
+    $variables['classes_array'] = array();
+
     $variables['classes_array'][] = drupal_html_class($variables['view_mode']);
 
     if (array_key_exists('display_pattern_options', $variables) && is_array($variables['display_pattern_options'])) {
@@ -42,7 +49,7 @@ function _display_pattern_options_add_classes(&$variables){
  *
  * @param $variables
  */
-function _display_pattern_options_set_tpl_variables(&$variables){
+function _display_pattern_options_add_node_tpl_variables(&$variables){
 
     $fields = _display_pattern_options_get_view_mode_config();
 
@@ -66,7 +73,7 @@ function _display_pattern_options_set_tpl_variables(&$variables){
  *
  * @param $variables
  */
-function _display_pattern_options_add_tpl_suggestions(&$variables){
+function _display_pattern_options_add_node_tpl_suggestions(&$variables){
     $variables['theme_hook_suggestions'][] = 'node__' . $variables['view_mode'];
     $variables['theme_hook_suggestions'][] = 'node__' . $variables['view_mode'] . '_' . $variables['type'];
 }
@@ -75,6 +82,15 @@ function _display_pattern_options_add_tpl_suggestions(&$variables){
  * Implements hook_theme_registery_alter().
  */
 function display_pattern_options_theme_registry_alter(&$theme_registry) {
+    _display_pattern_options_add_custom_tpl_files($theme_registry);
+}
+
+/**
+ * Add custom (overridable) tpl files
+ *
+ * @param $theme_registry
+ */
+function _display_pattern_options_add_custom_tpl_files(&$theme_registry){
     // Defined path to current module.
     $module_path = drupal_get_path('module', 'display_pattern_options');
     // Find all .tpl.php files in this module's folder recursively.
@@ -97,10 +113,11 @@ function display_pattern_options_theme_registry_alter(&$theme_registry) {
  * @param  array $variables
  * @param  string $hook
  */
-function display_pattern_options_preprocess_field(&$variables, $hook){
+function display_pattern_options_preprocess_field(&$variables){
 
-    _display_pattern_options_add_field_bem_classes($variables);
-
+    // @TODO: only do these conditionally based on config values
+    _display_pattern_options_add_field_classes($variables);
+    _display_pattern_options_add_field_tpl_suggestions($variables);
 }
 
 /**
@@ -108,7 +125,7 @@ function display_pattern_options_preprocess_field(&$variables, $hook){
  *
  * @param array $variables
  */
-function _display_pattern_options_add_field_bem_classes(&$variables){
+function _display_pattern_options_add_field_classes(&$variables){
 
     $fields = _display_pattern_options_get_view_mode_config();
 
@@ -118,10 +135,23 @@ function _display_pattern_options_add_field_bem_classes(&$variables){
 
     if (isset($fields['node'][$bundle][$view_mode][$field_name])) {
        $filter = array(' ' => '-', '/' => '-', '[' => '-', ']' => '');
-       $variables['classes_array'][] = drupal_clean_css_identifier($view_mode .'__'. $fields['node'][$bundle][$view_mode][$field_name], $filter);
-    }
 
+       // remove default classes
+       $variables['classes_array'] = array();
+
+       $variables['classes_array'][] = drupal_clean_css_identifier($view_mode .'__'. $fields['node'][$bundle][$view_mode][$field_name], $filter);
+
+       // field modifier classes - may or may not be necessary?
+       foreach ($variables['element']['#object']->display_pattern_options as $key => $val) {
+            $variables['classes_array'][] = drupal_clean_css_identifier($view_mode .'__'. $fields['node'][$bundle][$view_mode][$field_name] .'--'. $key .'-'. $val, $filter);
+       }
+    }
 }
+
+function _display_pattern_options_add_field_tpl_suggestions(&$variables){
+    // @TODO: add more here, e.g. field_promo_image, field_image_promo, field_article_promo, field_article_promo_image, etc.
+    $variables['theme_hook_suggestions'][] = 'field__' . $variables['element']['#view_mode'];
+  }
 
 // @TODO: might be useful??
 //function display_pattern_options_entity_view_mode_alter(&$view_mode, $context) {
