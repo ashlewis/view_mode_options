@@ -120,7 +120,19 @@ function display_pattern_options_panels_panels_pane_content_alter($content, $pan
  * @param $pane
  */
 function _display_pattern_options_panels_expose_custom_pane_config($content, $pane){
-    if (array_key_exists('dpo', $pane->configuration)) {
+
+    // TODO:
+    // 1) move to fields sub module
+    // 2) work out how to override global entityreference dpo config
+    //
+    if (isset($pane->configuration['formatter_settings']['dpo']['content'])) {
+        foreach($content->content['#items'] as $key => &$val){
+            $val['entity']->display_pattern_options = $pane->configuration['formatter_settings']['dpo']['content'];
+        }
+    }
+    // /TODO
+
+    else if (array_key_exists('dpo', $pane->configuration)) {
         $content->content['#node']->display_pattern_options = $pane->configuration['dpo'];
     }
 }
@@ -153,16 +165,16 @@ function _display_pattern_options_panels_form_alter(&$form, &$form_state){
 }
 
 /**
- * Custom ajax callback
- *
- * replace all display_pattern_option select elements with those applicable to selected view_mode
- * when view_mode element is changed
- *
- * @return array
- */
-function _display_pattern_options_panels_ajax_callback(&$form, &$form_state){
+     * Custom ajax callback
+     *
+     * replace all display_pattern_option select elements with those applicable to selected view_mode
+     * when view_mode element is changed
+     *
+     * @return array
+     */
+    function _display_pattern_options_panels_ajax_callback(&$form, &$form_state){
 
-    return $form['dpo'];
+        return $form['dpo'];
 
 //    list($form, $form_state, $form_id, $form_build_id, $commands) = ajax_get_form();
 //

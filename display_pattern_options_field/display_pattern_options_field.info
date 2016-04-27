@@ -1,0 +1,6 @@
+name = Display Pattern Options - Field
+description = "Provides options for display patterns to panels entity reference fields."
+core = 7.x
+dependencies[] = panelizer
+dependencies[] = entityreference
+dependencies[] = display_pattern_options
