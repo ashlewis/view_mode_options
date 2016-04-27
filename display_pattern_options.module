@@ -1,6 +1,11 @@
 <?php
 
 /**
+ * TODO:
+ * - add view mode options to panel field: entity reference formatter styles
+ * - ctools_entity_field_content_type_formatter_styles
+
+/**
  * Implements hook_entity_info_alter().
  */
 function display_pattern_options_entity_info_alter(&$entity_info) {
@@ -434,4 +439,65 @@ function _display_pattern_options_get_view_mode_config(){
             )
         )
     );
+}
+
+/* MOVE TO SEPERATE MODULE/FILE */
+//function display_pattern_options_field_formatter_settings_form_alter(&$settings_form, &$context){
+function display_pattern_options_form_ctools_entity_field_content_type_formatter_styles_alter(&$form, &$form_state){
+
+    // TODO: check this logic order
+    if (array_key_exists('view_mode', $form_state['input'])) {
+        $view_mode = $form_state['input']['view_mode'];
+    } else if (array_key_exists('view_mode', $form_state['values'])) {
+        $view_mode = $form_state['values']['view_mode'];
+    } else{
+        $view_mode = $form['view_mode']['#default_value'];
+    }
+
+    $form['view_mode']['#ajax'] = array(
+        // callback wont work directly here (ctools)
+        // we must provide custom path which needs to do some work before invoking callback provided here
+        'path' => 'display-pattern-options/panels/entityreference',
+        'callback' => '_display_pattern_options_panels_ajax_callback',
+        'wrapper' => 'dpo-ajax-replace',
+    );
+
+    // TODO: check the "type" argument value
+    $form['dpo'] = _display_pattern_options_build_options_elements($view_mode, $form_state, 'panel-entityreference');
+
+    $form['#submit'][] = '_display_pattern_options_panels_form_submit';
+
+}
+
+/**
+ * Implements hook_menu().
+ *
+ * @return array
+ */
+function display_pattern_options_menu(){
+    return _display_pattern_options_add_custom_paths();
+}
+
+/**
+ * Add custom ajax endpoints
+ *
+ * @return array
+ */
+function _display_pattern_options_add_custom_paths(){
+
+    $items = array();
+
+    $items['display-pattern-options/panels/entityreference'] = array(
+        'page callback' => '_display_pattern_options_panels_ajax_get_form',
+        // pass form id as argument to page callback function
+        'page arguments' => array('ctools_entity_field_content_type_formatter_styles'),
+        // Ensure correct format for rendered content
+        'delivery callback' => 'ajax_deliver',
+        'access callback' => TRUE,
+        // Ensure correct theme is used for custom ajax path
+        'theme callback' => 'ajax_base_page_theme',
+        'type' => MENU_CALLBACK
+    );
+
+    return $items;
 }
