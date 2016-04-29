@@ -1,0 +1,44 @@
+<?php
+
+/*
+* Implements hook_ctools_plugin_directory -
+* This lets ctools know to scan my module for a content_type plugin file
+* Detailed docks in ctools/ctools.api.php
+*/
+function ia_ctools_plugin_directory($module, $plugin) {
+    // we'll be nice and limit scandir() calls
+    if ($module == 'ctools' && $plugin == 'content_types') {
+        return 'plugins/content_types';
+    }
+    if ($module == 'page_manager' || $module == 'panels') {
+        return 'plugins/' . $plugin;
+    }
+}
+
+/**
+ * Return a list of possible view modes for an entity type and bundle
+ *
+ * @param $entity_type
+ * @param $machine_name
+ * @return array
+ */
+function _ia_get_view_modes($entity_type, $machine_name) {
+
+    // Retrieve information about the entities.
+    $entity_info = entity_get_info();
+
+    // Array to store the view modes.
+    $view_modes = array();
+
+    $view_modes['full'] = 'Full';
+
+    foreach ($entity_info[$entity_type]['view modes'] as $view_mode => $view_mode_info) {
+        $bundle_values = array_keys(entity_view_mode_get_enabled_bundles($entity_type, $view_mode));
+
+        //if (in_array($machine_name, $bundle_values)) {
+            $view_modes[$view_mode] = $view_mode;
+        //}
+    }
+
+    return $view_modes;
+}

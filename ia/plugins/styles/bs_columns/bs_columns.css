@@ -1,0 +1,13 @@
+.row.no-gutter{
+    margin-right:0;
+    margin-left:0;
+}
+.no-gutter > [class^="col-"]{
+    padding-left: 0px;
+    padding-right: 0px;
+}
+@media only screen and (min-width: 480px){
+    .row.grey-bg{
+        background-color: #ccc;
+    }
+}

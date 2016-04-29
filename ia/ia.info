@@ -1,0 +1,6 @@
+name = IA (Information Architecture)
+description = "Provides helpers for building site IA (URLs, breadcrumbs, menus, child pages)."
+core = 7.x
+# TODO: remove from this parent module directory
+dependencies[] = entity_view_mode
+dependencies[] = menu_block
